@@ -1,0 +1,10 @@
+.env
+__pycache__/
+*.pyc
+.venv/
+venv/
+data/ine/*.zip
+data/ine/*.shp
+data/ine/*.dbf
+data/ine/*.shx
+data/ine/*.prj
