@@ -50,3 +50,39 @@ AS $$
         )
     ORDER BY distance_m ASC;
 $$;
+
+-- Función: demografía ponderada dentro de un radio (requiere datos INE cargados)
+CREATE OR REPLACE FUNCTION demographics_in_radius(
+    center_lat FLOAT,
+    center_lng FLOAT,
+    radius_meters FLOAT
+)
+RETURNS TABLE (
+    population BIGINT,
+    area_km2 FLOAT,
+    avg_income FLOAT,
+    avg_age FLOAT
+)
+LANGUAGE sql
+STABLE
+AS $$
+    SELECT
+        SUM(
+            cs.population * (
+                ST_Area(ST_Intersection(
+                    cs.geometry,
+                    ST_Buffer(ST_SetSRID(ST_MakePoint(center_lng, center_lat), 4326)::geography, radius_meters)::geometry
+                )) /
+                NULLIF(ST_Area(cs.geometry), 0)
+            )
+        )::BIGINT AS population,
+        SUM(cs.area_km2) AS area_km2,
+        AVG(cs.avg_income) AS avg_income,
+        AVG(cs.avg_age) AS avg_age
+    FROM census_sections cs
+    WHERE ST_DWithin(
+        cs.geometry::geography,
+        ST_SetSRID(ST_MakePoint(center_lng, center_lat), 4326)::geography,
+        radius_meters
+    );
+$$;
