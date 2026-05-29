@@ -12,7 +12,7 @@ const NATIONAL_AVG_PEAK = 14.0;
 const SPAIN_AVG_DENSITY = 93; // hab/km²
 
 export const analyzeLocation = createServerFn({ method: "POST" })
-  .validator(z.object({ query: z.string().min(1), radius: z.number().min(1).max(50) }))
+  .inputValidator(z.object({ query: z.string().min(1), radius: z.number().min(1).max(50) }))
   .handler(async ({ data }) => {
     const { query, radius } = data;
 
@@ -32,11 +32,19 @@ export const analyzeLocation = createServerFn({ method: "POST" })
     const indoorRatio = totalCourts > 0 ? indoorCourts / totalCourts : 0;
 
     // Step 5: Ratios
-    const habPerCourt = totalCourts > 0 ? Math.round(demographics.population / totalCourts) : demographics.population;
-    const habPerIndoor = indoorCourts > 0 ? Math.round(demographics.population / indoorCourts) : null;
+    const habPerCourt =
+      totalCourts > 0 ? Math.round(demographics.population / totalCourts) : demographics.population;
+    const habPerIndoor =
+      indoorCourts > 0 ? Math.round(demographics.population / indoorCourts) : null;
     const ratioVsNational = totalCourts > 0 ? habPerCourt / NATIONAL_INHABITANTS_PER_COURT : 999;
     const saturation =
-      ratioVsNational > 2.0 ? "baja" : ratioVsNational > 1.2 ? "media" : ratioVsNational > 0.7 ? "alta" : "saturada";
+      ratioVsNational > 2.0
+        ? "baja"
+        : ratioVsNational > 1.2
+          ? "media"
+          : ratioVsNational > 0.7
+            ? "alta"
+            : "saturada";
     const indoorDeficit = indoorRatio < NATIONAL_INDOOR_RATIO || indoorCourts === 0;
 
     // Step 6: Pricing
@@ -45,13 +53,16 @@ export const analyzeLocation = createServerFn({ method: "POST" })
       ? clubsWithPricing.reduce((s, c) => s + (c.price_valley ?? 0), 0) / clubsWithPricing.length
       : null;
     const marketPeak = clubsWithPricing.length
-      ? clubsWithPricing.filter((c) => c.price_peak).reduce((s, c) => s + (c.price_peak ?? 0), 0) / clubsWithPricing.length
+      ? clubsWithPricing.filter((c) => c.price_peak).reduce((s, c) => s + (c.price_peak ?? 0), 0) /
+        clubsWithPricing.length
       : null;
     const incomeFactor = demographics.avgIncome
       ? Math.min(1.3, Math.max(0.8, demographics.avgIncome / 32000))
       : 1.0;
-    const recommendedValley = Math.round((marketValley ?? NATIONAL_AVG_VALLEY) * incomeFactor * 100) / 100;
-    const recommendedPeak = Math.round((marketPeak ?? NATIONAL_AVG_PEAK) * incomeFactor * 100) / 100;
+    const recommendedValley =
+      Math.round((marketValley ?? NATIONAL_AVG_VALLEY) * incomeFactor * 100) / 100;
+    const recommendedPeak =
+      Math.round((marketPeak ?? NATIONAL_AVG_PEAK) * incomeFactor * 100) / 100;
 
     // Step 7: Opportunity score
     let score = 50;
@@ -76,10 +87,14 @@ export const analyzeLocation = createServerFn({ method: "POST" })
     const opportunities: string[] = [];
     const risks: string[] = [];
     if (indoorDeficit) opportunities.push("Déficit de pistas indoor en la zona");
-    if (habPerCourt > NATIONAL_INHABITANTS_PER_COURT * 1.5) opportunities.push("Mercado infraservido vs. media nacional");
-    if (demographics.population > 100000) opportunities.push("Masa crítica de población suficiente");
-    if (demographics.avgIncome && demographics.avgIncome > 35000) opportunities.push("Renta media alta: pricing premium defendible");
-    if (saturation === "alta" || saturation === "saturada") risks.push("Alta competencia ya establecida en la zona");
+    if (habPerCourt > NATIONAL_INHABITANTS_PER_COURT * 1.5)
+      opportunities.push("Mercado infraservido vs. media nacional");
+    if (demographics.population > 100000)
+      opportunities.push("Masa crítica de población suficiente");
+    if (demographics.avgIncome && demographics.avgIncome > 35000)
+      opportunities.push("Renta media alta: pricing premium defendible");
+    if (saturation === "alta" || saturation === "saturada")
+      risks.push("Alta competencia ya establecida en la zona");
     if (clubs.length > 5) risks.push(`Mercado con ${clubs.length} clubes activos en el radio`);
     if (demographics.population < 30000) risks.push("Masa crítica de población limitada");
 
@@ -183,7 +198,15 @@ async function getDemographics(lat: number, lng: number, radiusKm: number) {
   };
 }
 
-async function saveAnalysis(query: string, radius: number, lat: number, lng: number, address: string) {
+async function saveAnalysis(
+  query: string,
+  radius: number,
+  lat: number,
+  lng: number,
+  address: string,
+) {
   const supabase = getSupabaseClient();
-  await supabase.table("analysis_results").insert({ query, radius_km: radius, lat, lng, address_resolved: address });
+  await supabase
+    .from("analysis_results")
+    .insert({ query, radius_km: radius, lat, lng, address_resolved: address });
 }

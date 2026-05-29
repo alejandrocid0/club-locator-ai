@@ -14,7 +14,11 @@ export type ClubResult = {
   city: string | null;
 };
 
-export async function getClubsInRadius(lat: number, lng: number, radiusKm: number): Promise<ClubResult[]> {
+export async function getClubsInRadius(
+  lat: number,
+  lng: number,
+  radiusKm: number,
+): Promise<ClubResult[]> {
   const supabase = getSupabaseClient();
   const radiusMeters = radiusKm * 1000;
 
@@ -24,21 +28,22 @@ export async function getClubsInRadius(lat: number, lng: number, radiusKm: numbe
     radius_meters: radiusMeters,
   });
 
-  const dbClubs: ClubResult[] = (!error && data)
-    ? data.map((r: any) => ({
-        id: String(r.id),
-        name: r.name,
-        distance_km: Math.round((r.distance_m / 1000) * 100) / 100,
-        total_courts: r.total_courts ?? 0,
-        indoor_courts: r.indoor_courts ?? 0,
-        outdoor_courts: r.outdoor_courts ?? 0,
-        has_indoor: r.has_indoor ?? false,
-        price_valley: r.price_valley ?? null,
-        price_peak: r.price_peak ?? null,
-        rating: r.rating ?? null,
-        city: r.city ?? null,
-      }))
-    : [];
+  const dbClubs: ClubResult[] =
+    !error && data
+      ? data.map((r: any) => ({
+          id: String(r.id),
+          name: r.name,
+          distance_km: Math.round((r.distance_m / 1000) * 100) / 100,
+          total_courts: r.total_courts ?? 0,
+          indoor_courts: r.indoor_courts ?? 0,
+          outdoor_courts: r.outdoor_courts ?? 0,
+          has_indoor: r.has_indoor ?? false,
+          price_valley: r.price_valley ?? null,
+          price_peak: r.price_peak ?? null,
+          rating: r.rating ?? null,
+          city: r.city ?? null,
+        }))
+      : [];
 
   if (dbClubs.length >= 3) return dbClubs;
 
@@ -72,7 +77,7 @@ async function getClubsFromOSM(lat: number, lng: number, radiusKm: number): Prom
 
     if (!res.ok) return [];
 
-    const json = await res.json() as { elements: any[] };
+    const json = (await res.json()) as { elements: any[] };
 
     return json.elements
       .map((el: any) => {

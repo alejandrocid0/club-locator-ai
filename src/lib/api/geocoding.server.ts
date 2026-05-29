@@ -1,4 +1,6 @@
-export async function geocode(query: string): Promise<{ lat: number; lng: number; address: string }> {
+export async function geocode(
+  query: string,
+): Promise<{ lat: number; lng: number; address: string }> {
   const cleanQuery = extractFromMapsUrl(query);
   const encoded = encodeURIComponent(cleanQuery);
   const url = `https://nominatim.openstreetmap.org/search?q=${encoded}&format=json&addressdetails=1&countrycodes=es&limit=1&accept-language=es`;
@@ -9,7 +11,7 @@ export async function geocode(query: string): Promise<{ lat: number; lng: number
 
   if (!res.ok) throw new Error("Error al conectar con el servicio de geocodificación");
 
-  const data = await res.json() as Array<{ lat: string; lon: string; display_name: string }>;
+  const data = (await res.json()) as Array<{ lat: string; lon: string; display_name: string }>;
 
   if (!data.length) throw new Error(`No se encontró la ubicación: ${cleanQuery}`);
 
