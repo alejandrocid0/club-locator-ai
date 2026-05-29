@@ -33,9 +33,6 @@ export function generateMockAnalysis(query: string, radius: number) {
     },
     demographics: {
       population,
-      density: Math.round(rand(1200, 5800, 7)),
-      avgIncome: Math.round(rand(24000, 48000, 8)),
-      avgAge: rand(36, 46, 11),
     },
     supply: {
       clubs,
@@ -58,7 +55,12 @@ export function generateMockAnalysis(query: string, radius: number) {
     },
     clubsNearby: Array.from({ length: clubs }).map((_, i) => ({
       id: i,
-      name: ["Padel Pro", "Indoor Club", "Set & Match", "Premium Padel", "City Padel", "Royal Padel"][i % 6] + " " + (i + 1),
+      name:
+        ["Padel Pro", "Indoor Club", "Set & Match", "Premium Padel", "City Padel", "Royal Padel"][
+          i % 6
+        ] +
+        " " +
+        (i + 1),
       type: i % 3 === 0 ? "indoor" : "outdoor",
       courts: Math.round(rand(3, 10, 20 + i)),
       offset: {

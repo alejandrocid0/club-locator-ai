@@ -2,12 +2,8 @@ import type { AnalysisResult } from "@/lib/mock-analysis";
 import {
   TrendingUp,
   Users,
-  Building2,
-  Activity,
   ShieldAlert,
   Sparkles,
-  Wallet,
-  MapPin,
   Layers,
   Gauge,
   CheckCircle2,
@@ -26,13 +22,7 @@ import {
   CartesianGrid,
 } from "recharts";
 
-function Card({
-  children,
-  className = "",
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) {
+function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return (
     <div
       className={`rounded-2xl border border-border bg-[var(--gradient-surface)] backdrop-blur shadow-[var(--shadow-elegant)] ${className}`}
@@ -88,7 +78,11 @@ function Stat({
 
 function Semaforo({ tone }: { tone: "green" | "yellow" | "red" }) {
   const map = { green: "bg-success", yellow: "bg-warning", red: "bg-destructive" };
-  return <span className={`inline-block size-2.5 rounded-full ${map[tone]} shadow-[0_0_12px_currentColor]`} />;
+  return (
+    <span
+      className={`inline-block size-2.5 rounded-full ${map[tone]} shadow-[0_0_12px_currentColor]`}
+    />
+  );
 }
 
 const fmt = (n: number) => new Intl.NumberFormat("es-ES").format(n);
@@ -116,7 +110,11 @@ export function Report({ data }: { data: AnalysisResult }) {
   ];
 
   const scoreTone =
-    data.summary.opportunityScore >= 8 ? "success" : data.summary.opportunityScore >= 6.5 ? "warning" : "danger";
+    data.summary.opportunityScore >= 8
+      ? "success"
+      : data.summary.opportunityScore >= 6.5
+        ? "warning"
+        : "danger";
 
   return (
     <div className="space-y-12">
@@ -125,9 +123,14 @@ export function Report({ data }: { data: AnalysisResult }) {
         <SectionTitle kicker="01 · Resumen ejecutivo" title="Score de oportunidad" />
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           <Card className="p-6 lg:col-span-2 relative overflow-hidden">
-            <div className="absolute inset-0 opacity-50" style={{ background: "var(--gradient-hero)" }} />
+            <div
+              className="absolute inset-0 opacity-50"
+              style={{ background: "var(--gradient-hero)" }}
+            />
             <div className="relative">
-              <div className="text-xs uppercase tracking-widest text-primary/80">Opportunity Score</div>
+              <div className="text-xs uppercase tracking-widest text-primary/80">
+                Opportunity Score
+              </div>
               <div className="mt-3 flex items-end gap-2">
                 <span className="text-6xl font-semibold tabular-nums bg-gradient-to-br from-primary to-primary-glow bg-clip-text text-transparent">
                   {data.summary.opportunityScore.toFixed(1)}
@@ -141,8 +144,18 @@ export function Report({ data }: { data: AnalysisResult }) {
             </div>
           </Card>
           <Stat icon={TrendingUp} label="Demanda" value={data.summary.demandLevel} tone="success" />
-          <Stat icon={Layers} label="Déficit indoor" value={`${data.summary.indoorDeficit}%`} tone="warning" />
-          <Stat icon={Sparkles} label="Potencial premium" value={data.summary.premiumPotential} tone="success" />
+          <Stat
+            icon={Layers}
+            label="Déficit indoor"
+            value={`${data.summary.indoorDeficit}%`}
+            tone="warning"
+          />
+          <Stat
+            icon={Sparkles}
+            label="Potencial premium"
+            value={data.summary.premiumPotential}
+            tone="success"
+          />
         </div>
         <div className="mt-4">
           <Stat
@@ -157,11 +170,13 @@ export function Report({ data }: { data: AnalysisResult }) {
       {/* 2. Demografía */}
       <section>
         <SectionTitle kicker="02 · Demografía" title="Mercado en el radio analizado" />
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <Stat icon={Users} label="Población" value={fmt(data.demographics.population)} hint={`Radio ${data.radius} km`} />
-          <Stat icon={MapPin} label="Densidad" value={`${fmt(data.demographics.density)}/km²`} />
-          <Stat icon={Wallet} label="Renta media" value={eur(data.demographics.avgIncome)} hint="hogar/año" />
-          <Stat icon={Activity} label="Edad media" value={`${data.demographics.avgAge} años`} />
+        <div className="grid grid-cols-1 gap-4 max-w-xs">
+          <Stat
+            icon={Users}
+            label="Población"
+            value={fmt(data.demographics.population)}
+            hint={`Radio ${data.radius} km`}
+          />
         </div>
       </section>
 
@@ -170,13 +185,19 @@ export function Report({ data }: { data: AnalysisResult }) {
         <SectionTitle kicker="03 · Oferta" title="Oferta actual de pádel" />
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <div className="lg:col-span-2 grid grid-cols-2 gap-4">
-            <Stat icon={Building2} label="Clubes" value={String(data.supply.clubs)} />
             <Stat icon={Layers} label="Pistas totales" value={String(data.supply.totalCourts)} />
             <Stat icon={Layers} label="Indoor" value={String(data.supply.indoor)} tone="success" />
-            <Stat icon={Layers} label="Outdoor" value={String(data.supply.outdoor)} tone="warning" />
+            <Stat
+              icon={Layers}
+              label="Outdoor"
+              value={String(data.supply.outdoor)}
+              tone="warning"
+            />
           </div>
           <Card className="p-5">
-            <div className="text-xs uppercase tracking-wider text-muted-foreground mb-2">Mix indoor / outdoor</div>
+            <div className="text-xs uppercase tracking-wider text-muted-foreground mb-2">
+              Mix indoor / outdoor
+            </div>
             <div className="h-56">
               <ResponsiveContainer>
                 <PieChart>
@@ -203,8 +224,12 @@ export function Report({ data }: { data: AnalysisResult }) {
               </ResponsiveContainer>
             </div>
             <div className="flex justify-center gap-4 text-xs text-muted-foreground">
-              <span className="flex items-center gap-1.5"><span className="size-2 rounded-full bg-primary" /> Indoor</span>
-              <span className="flex items-center gap-1.5"><span className="size-2 rounded-full bg-accent" /> Outdoor</span>
+              <span className="flex items-center gap-1.5">
+                <span className="size-2 rounded-full bg-primary" /> Indoor
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="size-2 rounded-full bg-accent" /> Outdoor
+              </span>
             </div>
           </Card>
         </div>
@@ -217,7 +242,11 @@ export function Report({ data }: { data: AnalysisResult }) {
           <div className="h-64">
             <ResponsiveContainer>
               <BarChart data={benchmarkData}>
-                <CartesianGrid stroke="var(--color-border)" strokeDasharray="3 3" vertical={false} />
+                <CartesianGrid
+                  stroke="var(--color-border)"
+                  strokeDasharray="3 3"
+                  vertical={false}
+                />
                 <XAxis dataKey="name" stroke="var(--color-muted-foreground)" fontSize={12} />
                 <YAxis stroke="var(--color-muted-foreground)" fontSize={12} />
                 <Tooltip
@@ -236,13 +265,30 @@ export function Report({ data }: { data: AnalysisResult }) {
 
           <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
             {[
-              { label: "Habitantes por pista", value: fmt(data.benchmark.habPerCourt), tone: "green" as const },
-              { label: "Habitantes por pista indoor", value: fmt(data.benchmark.habPerIndoor), tone: "green" as const },
-              { label: "Ratio indoor / outdoor", value: `${data.benchmark.indoorRatio}%`, tone: "yellow" as const },
+              {
+                label: "Habitantes por pista",
+                value: fmt(data.benchmark.habPerCourt),
+                tone: "green" as const,
+              },
+              {
+                label: "Habitantes por pista indoor",
+                value: fmt(data.benchmark.habPerIndoor),
+                tone: "green" as const,
+              },
+              {
+                label: "Ratio indoor / outdoor",
+                value: `${data.benchmark.indoorRatio}%`,
+                tone: "yellow" as const,
+              },
               {
                 label: "Saturación de mercado",
                 value: data.benchmark.saturation,
-                tone: data.benchmark.saturation === "alta" ? ("red" as const) : data.benchmark.saturation === "media" ? ("yellow" as const) : ("green" as const),
+                tone:
+                  data.benchmark.saturation === "alta"
+                    ? ("red" as const)
+                    : data.benchmark.saturation === "media"
+                      ? ("yellow" as const)
+                      : ("green" as const),
               },
             ].map((row) => (
               <div
@@ -275,9 +321,13 @@ export function Report({ data }: { data: AnalysisResult }) {
                   Top tier
                 </div>
               )}
-              <div className="text-xs uppercase tracking-wider text-muted-foreground">{p.label}</div>
+              <div className="text-xs uppercase tracking-wider text-muted-foreground">
+                {p.label}
+              </div>
               <div className="mt-3 flex items-baseline gap-1">
-                <span className="text-4xl font-semibold tabular-nums text-foreground">€{p.value}</span>
+                <span className="text-4xl font-semibold tabular-nums text-foreground">
+                  €{p.value}
+                </span>
                 <span className="text-muted-foreground">/ 90 min</span>
               </div>
               <div className="mt-2 text-sm text-muted-foreground">{p.hint}</div>
@@ -333,7 +383,9 @@ export function Report({ data }: { data: AnalysisResult }) {
               >
                 <div
                   className={`size-2.5 rounded-full ${
-                    c.type === "indoor" ? "bg-accent shadow-[0_0_12px_var(--color-accent)]" : "bg-success shadow-[0_0_12px_var(--color-success)]"
+                    c.type === "indoor"
+                      ? "bg-accent shadow-[0_0_12px_var(--color-accent)]"
+                      : "bg-success shadow-[0_0_12px_var(--color-success)]"
                   }`}
                 />
                 <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute left-3 top-0 whitespace-nowrap px-2 py-1 rounded-md bg-card-elevated border border-border text-[11px]">
@@ -343,8 +395,12 @@ export function Report({ data }: { data: AnalysisResult }) {
             ))}
             {/* legend */}
             <div className="absolute bottom-3 left-3 flex gap-3 text-xs bg-card-elevated/80 backdrop-blur border border-border rounded-lg px-3 py-2">
-              <span className="flex items-center gap-1.5"><span className="size-2 rounded-full bg-accent" /> Indoor</span>
-              <span className="flex items-center gap-1.5"><span className="size-2 rounded-full bg-success" /> Outdoor</span>
+              <span className="flex items-center gap-1.5">
+                <span className="size-2 rounded-full bg-accent" /> Indoor
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="size-2 rounded-full bg-success" /> Outdoor
+              </span>
             </div>
             <div className="absolute bottom-3 right-3 text-[10px] uppercase tracking-widest text-muted-foreground bg-card-elevated/80 backdrop-blur border border-border rounded-lg px-3 py-2">
               Radio {data.radius} km
@@ -357,14 +413,19 @@ export function Report({ data }: { data: AnalysisResult }) {
       <section>
         <SectionTitle kicker="07 · Recomendación" title="Tesis de inversión" />
         <Card className="p-8 relative overflow-hidden">
-          <div className="absolute inset-0 opacity-60" style={{ background: "var(--gradient-hero)" }} />
+          <div
+            className="absolute inset-0 opacity-60"
+            style={{ background: "var(--gradient-hero)" }}
+          />
           <div className="relative">
             <div className="flex items-start gap-4">
               <div className="rounded-xl bg-primary/15 border border-primary/30 p-3 text-primary">
                 <Gauge className="size-5" />
               </div>
               <div className="flex-1">
-                <p className="text-lg leading-relaxed text-foreground">{data.recommendation.summary}</p>
+                <p className="text-lg leading-relaxed text-foreground">
+                  {data.recommendation.summary}
+                </p>
                 <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-1.5 text-sm text-primary">
                   <Sparkles className="size-3.5" />
                   Modelo recomendado: {data.recommendation.model}

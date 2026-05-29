@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { geocode } from "./geocoding.server";
-import { getClubsInRadius } from "./clubs.server";
+import { getCourtsInRadius } from "./courts.server";
 import { getSupabaseClient } from "@/lib/supabase.server";
 
 const NATIONAL_INHABITANTS_PER_COURT = 3800;
@@ -19,23 +19,21 @@ export const analyzeLocation = createServerFn({ method: "POST" })
     // Step 1: Geocode
     const { lat, lng, address } = await geocode(query);
 
-    // Step 2: Demographics from Supabase PostGIS (falls back to estimate)
-    const demographics = await getDemographics(lat, lng, radius);
+    // Step 2: Population from Supabase PostGIS (falls back to estimate)
+    const population = await getPopulation(lat, lng, radius);
 
-    // Step 3: Clubs from DB + OSM
-    const clubs = await getClubsInRadius(lat, lng, radius);
+    // Step 3: Courts from DB
+    const courts = await getCourtsInRadius(lat, lng, radius);
 
     // Step 4: Aggregate supply
-    const totalCourts = clubs.reduce((s, c) => s + c.total_courts, 0);
-    const indoorCourts = clubs.reduce((s, c) => s + c.indoor_courts, 0);
-    const outdoorCourts = clubs.reduce((s, c) => s + c.outdoor_courts, 0);
+    const totalCourts = courts.length;
+    const indoorCourts = courts.filter((c) => c.is_indoor).length;
+    const outdoorCourts = totalCourts - indoorCourts;
     const indoorRatio = totalCourts > 0 ? indoorCourts / totalCourts : 0;
 
     // Step 5: Ratios
-    const habPerCourt =
-      totalCourts > 0 ? Math.round(demographics.population / totalCourts) : demographics.population;
-    const habPerIndoor =
-      indoorCourts > 0 ? Math.round(demographics.population / indoorCourts) : null;
+    const habPerCourt = totalCourts > 0 ? Math.round(population / totalCourts) : population;
+    const habPerIndoor = indoorCourts > 0 ? Math.round(population / indoorCourts) : null;
     const ratioVsNational = totalCourts > 0 ? habPerCourt / NATIONAL_INHABITANTS_PER_COURT : 999;
     const saturation =
       ratioVsNational > 2.0
@@ -47,33 +45,19 @@ export const analyzeLocation = createServerFn({ method: "POST" })
             : "saturada";
     const indoorDeficit = indoorRatio < NATIONAL_INDOOR_RATIO || indoorCourts === 0;
 
-    // Step 6: Pricing
-    const clubsWithPricing = clubs.filter((c) => c.price_valley);
-    const marketValley = clubsWithPricing.length
-      ? clubsWithPricing.reduce((s, c) => s + (c.price_valley ?? 0), 0) / clubsWithPricing.length
-      : null;
-    const marketPeak = clubsWithPricing.length
-      ? clubsWithPricing.filter((c) => c.price_peak).reduce((s, c) => s + (c.price_peak ?? 0), 0) /
-        clubsWithPricing.length
-      : null;
-    const incomeFactor = demographics.avgIncome
-      ? Math.min(1.3, Math.max(0.8, demographics.avgIncome / 32000))
-      : 1.0;
-    const recommendedValley =
-      Math.round((marketValley ?? NATIONAL_AVG_VALLEY) * incomeFactor * 100) / 100;
-    const recommendedPeak =
-      Math.round((marketPeak ?? NATIONAL_AVG_PEAK) * incomeFactor * 100) / 100;
+    // Step 6: Pricing (fixed national base, no income adjustment)
+    const recommendedValley = NATIONAL_AVG_VALLEY;
+    const recommendedPeak = NATIONAL_AVG_PEAK;
 
     // Step 7: Opportunity score
     let score = 50;
     score += { baja: 30, media: 15, alta: -10, saturada: -25 }[saturation] ?? 0;
     if (indoorDeficit) score += 15;
-    if (demographics.population > 150000) score += 10;
-    else if (demographics.population > 50000) score += 5;
+    if (population > 150000) score += 10;
+    else if (population > 50000) score += 5;
     score = Math.max(0, Math.min(100, score));
 
     const risk = saturation === "saturada" ? "alto" : saturation === "alta" ? "medio" : "bajo";
-    const indoorOpportunity = indoorDeficit ? "alta" : indoorRatio < 0.35 ? "moderada" : "ninguna";
 
     const model =
       score >= 70 && indoorDeficit
@@ -89,16 +73,12 @@ export const analyzeLocation = createServerFn({ method: "POST" })
     if (indoorDeficit) opportunities.push("Déficit de pistas indoor en la zona");
     if (habPerCourt > NATIONAL_INHABITANTS_PER_COURT * 1.5)
       opportunities.push("Mercado infraservido vs. media nacional");
-    if (demographics.population > 100000)
-      opportunities.push("Masa crítica de población suficiente");
-    if (demographics.avgIncome && demographics.avgIncome > 35000)
-      opportunities.push("Renta media alta: pricing premium defendible");
+    if (population > 100000) opportunities.push("Masa crítica de población suficiente");
     if (saturation === "alta" || saturation === "saturada")
       risks.push("Alta competencia ya establecida en la zona");
-    if (clubs.length > 5) risks.push(`Mercado con ${clubs.length} clubes activos en el radio`);
-    if (demographics.population < 30000) risks.push("Masa crítica de población limitada");
+    if (totalCourts > 20) risks.push(`Alta densidad de pistas: ${totalCourts} en el radio`);
+    if (population < 30000) risks.push("Masa crítica de población limitada");
 
-    // Save to history
     saveAnalysis(query, radius, lat, lng, address).catch(() => {});
 
     return {
@@ -114,13 +94,10 @@ export const analyzeLocation = createServerFn({ method: "POST" })
         competitiveRisk: risk,
       },
       demographics: {
-        population: demographics.population,
-        density: demographics.density,
-        avgIncome: demographics.avgIncome,
-        avgAge: demographics.avgAge,
+        population,
       },
       supply: {
-        clubs: clubs.length,
+        clubs: 0,
         totalCourts,
         indoor: indoorCourts,
         outdoor: outdoorCourts,
@@ -142,18 +119,22 @@ export const analyzeLocation = createServerFn({ method: "POST" })
         punta: recommendedPeak,
         premium: Math.round(recommendedPeak * 1.4 * 100) / 100,
       },
-      clubsNearby: clubs.slice(0, 12).map((c, i) => ({
+      clubsNearby: courts.slice(0, 12).map((c, i) => ({
         id: i,
-        name: c.name,
-        type: c.has_indoor ? "indoor" : "outdoor",
-        courts: c.total_courts,
+        name: c.name ?? `Pista ${i + 1}`,
+        type: c.is_indoor ? "indoor" : "outdoor",
+        courts: 1,
         offset: {
-          x: Math.cos((i / clubs.length) * 2 * Math.PI) * (c.distance_km / radius),
-          y: Math.sin((i / clubs.length) * 2 * Math.PI) * (c.distance_km / radius),
+          x:
+            Math.cos((i / Math.max(courts.length, 1)) * 2 * Math.PI) *
+            (c.distance_m / 1000 / radius),
+          y:
+            Math.sin((i / Math.max(courts.length, 1)) * 2 * Math.PI) *
+            (c.distance_m / 1000 / radius),
         },
       })),
       recommendation: {
-        summary: `Zona con saturación ${saturation}. ${clubs.length} clubes detectados, ${demographics.population.toLocaleString("es-ES")} habitantes en radio de análisis. ${indoorDeficit ? "Déficit indoor detectado." : "Cobertura indoor adecuada."}`,
+        summary: `Zona con saturación ${saturation}. ${totalCourts} pistas detectadas, ${population.toLocaleString("es-ES")} habitantes en radio de ${radius} km. ${indoorDeficit ? "Déficit indoor detectado." : "Cobertura indoor adecuada."}`,
         model,
         opportunities,
         risks,
@@ -161,7 +142,7 @@ export const analyzeLocation = createServerFn({ method: "POST" })
     };
   });
 
-async function getDemographics(lat: number, lng: number, radiusKm: number) {
+async function getPopulation(lat: number, lng: number, radiusKm: number): Promise<number> {
   try {
     const supabase = getSupabaseClient();
     const radiusM = radiusKm * 1000;
@@ -173,15 +154,7 @@ async function getDemographics(lat: number, lng: number, radiusKm: number) {
     });
 
     if (data && data[0]?.population) {
-      const row = data[0];
-      const area = row.area_km2 || Math.PI * radiusKm ** 2;
-      return {
-        population: row.population,
-        area_km2: area,
-        density: Math.round(row.population / area),
-        avgIncome: row.avg_income ?? null,
-        avgAge: row.avg_age ?? null,
-      };
+      return data[0].population;
     }
   } catch {
     // Fall through to estimate
@@ -189,13 +162,7 @@ async function getDemographics(lat: number, lng: number, radiusKm: number) {
 
   // Fallback estimate until INE data is loaded
   const area = Math.round(Math.PI * radiusKm ** 2);
-  return {
-    population: Math.round(area * SPAIN_AVG_DENSITY),
-    area_km2: area,
-    density: SPAIN_AVG_DENSITY,
-    avgIncome: null,
-    avgAge: null,
-  };
+  return Math.round(area * SPAIN_AVG_DENSITY);
 }
 
 async function saveAnalysis(

@@ -7,3 +7,8 @@ pydantic==2.9.2
 pydantic-core==2.23.4
 shapely==2.0.6
 geopy==2.4.1
+geopandas==1.0.1
+pandas==2.2.3
+requests==2.32.3
+pyproj==3.7.0
+fiona==1.10.1
