@@ -3,7 +3,7 @@ import { useState } from "react";
 import { SearchBar } from "@/components/analyzer/SearchBar";
 import { Report } from "@/components/analyzer/Report";
 import { generateMockAnalysis, type AnalysisResult } from "@/lib/mock-analysis";
-import { Activity } from "lucide-react";
+import logo from "@/assets/padelrenting-logo.png";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -32,41 +32,18 @@ function Index() {
 
   return (
     <div className="min-h-screen bg-background text-foreground relative">
-      {/* ambient glow */}
-      <div
-        className="pointer-events-none fixed inset-x-0 top-0 h-[600px] opacity-70"
-        style={{ background: "var(--gradient-hero)" }}
-      />
-
-      <header className="relative border-b border-border/60 backdrop-blur bg-background/60">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="size-8 rounded-lg bg-gradient-to-br from-primary to-primary-glow grid place-items-center text-primary-foreground">
-              <Activity className="size-4" />
-            </div>
-            <span className="font-semibold tracking-tight">PadelRenting</span>
-            <span className="text-muted-foreground text-sm hidden sm:inline">· Location Intelligence</span>
-          </div>
-          <div className="text-xs text-muted-foreground hidden md:flex items-center gap-2">
-            <span className="size-1.5 rounded-full bg-success animate-pulse" />
-            Prototipo · datos simulados
-          </div>
+      <header className="relative border-b border-border bg-background">
+        <div className="max-w-7xl mx-auto px-6 py-5 flex items-center justify-between">
+          <img src={logo} alt="PadelRenting" className="h-7 w-auto" />
+          <div className="text-xs text-muted-foreground hidden sm:block">Location Intelligence</div>
         </div>
       </header>
 
-      <main className="relative max-w-7xl mx-auto px-6 pt-16 pb-24">
-        <div className="text-center max-w-3xl mx-auto">
-          <div className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.25em] text-primary/80 mb-5">
-            <span className="size-1.5 rounded-full bg-primary" />
-            Expansión estratégica
-          </div>
-          <h1 className="text-4xl sm:text-5xl font-semibold tracking-tight bg-gradient-to-br from-foreground to-foreground/70 bg-clip-text text-transparent">
-            Expansión estratégica de PadelRenting
+      <main className="relative max-w-7xl mx-auto px-6 pt-20 pb-24">
+        <div className="text-center max-w-2xl mx-auto">
+          <h1 className="text-4xl sm:text-5xl font-semibold tracking-tight text-foreground">
+            Análisis de ubicaciones
           </h1>
-          <p className="mt-4 text-lg text-muted-foreground">
-            Análisis experto de ubicaciones para clubes de pádel. Introduce una dirección o URL de Google Maps y obtén
-            un informe de mercado en segundos.
-          </p>
         </div>
 
         <div className="mt-10">
@@ -82,17 +59,10 @@ function Index() {
             </div>
           )}
           {!loading && result && <Report data={result} />}
-          {!loading && !result && (
-            <div className="text-center text-sm text-muted-foreground mt-8">
-              Empieza analizando una ubicación. Ejemplos: <em>“Pozuelo de Alarcón”</em>, <em>“Marbella centro”</em>,
-              <em> “Av. Diagonal, Barcelona”</em>.
-            </div>
-          )}
         </div>
 
-        <footer className="mt-24 pt-8 border-t border-border/60 text-xs text-muted-foreground flex flex-wrap items-center justify-between gap-2">
-          <div>© PadelRenting · Location Intelligence</div>
-          <div>Fuentes preparadas para integración: INE · Google Maps · Playtomic · Catastro · PostGIS</div>
+        <footer className="mt-24 pt-8 border-t border-border text-xs text-muted-foreground text-center">
+          © PadelRenting
         </footer>
       </main>
     </div>
