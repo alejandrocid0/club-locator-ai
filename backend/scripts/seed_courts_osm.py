@@ -16,7 +16,7 @@ load_dotenv("backend/.env")
 SUPABASE_URL = os.environ["SUPABASE_URL"]
 SUPABASE_KEY = os.environ["SUPABASE_SERVICE_KEY"]
 
-OVERPASS_URL = "https://overpass-api.de/api/interpreter"
+OVERPASS_URL = "https://overpass.kumi.systems/api/interpreter"
 
 # España completa (bbox: sur, oeste, norte, este)
 SPAIN_BBOX = "27.6,-18.2,43.8,4.4"
