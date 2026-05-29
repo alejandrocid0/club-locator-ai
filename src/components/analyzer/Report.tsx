@@ -290,7 +290,7 @@ export function Report({ data }: { data: AnalysisResult }) {
       <section>
         <SectionTitle kicker="06 · Mapa" title="Competencia en el radio analizado" />
         <Card className="p-2">
-          <div className="relative aspect-[16/9] rounded-xl overflow-hidden border border-border bg-[radial-gradient(circle_at_50%_50%,oklch(0.25_0.03_250),oklch(0.16_0.015_250))]">
+          <div className="relative aspect-[16/9] rounded-xl overflow-hidden border border-border bg-[radial-gradient(circle_at_50%_50%,oklch(0.98_0.005_25),oklch(0.94_0.008_25))]">
             {/* grid */}
             <div
               className="absolute inset-0 opacity-40"
