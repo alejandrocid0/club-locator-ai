@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { SearchBar } from "@/components/analyzer/SearchBar";
 import { Report } from "@/components/analyzer/Report";
+import { analyzeLocation } from "@/lib/api/analyze.functions";
 import { generateMockAnalysis, type AnalysisResult } from "@/lib/mock-analysis";
 import logo from "@/assets/padelrenting-logo.png";
 
@@ -21,13 +22,22 @@ export const Route = createFileRoute("/")({
 function Index() {
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleAnalyze = (query: string, radius: number) => {
+  const handleAnalyze = async (query: string, radius: number) => {
     setLoading(true);
-    setTimeout(() => {
+    setError(null);
+
+    try {
+      const data = await analyzeLocation({ data: { query, radius } });
+      setResult(data as AnalysisResult);
+    } catch (err) {
+      // Fallback to mock if backend not available
+      console.warn("Backend not available, using mock data:", err);
       setResult(generateMockAnalysis(query, radius));
+    } finally {
       setLoading(false);
-    }, 900);
+    }
   };
 
   return (
@@ -49,6 +59,10 @@ function Index() {
         <div className="mt-10">
           <SearchBar onAnalyze={handleAnalyze} loading={loading} />
         </div>
+
+        {error && (
+          <div className="mt-6 text-center text-sm text-destructive">{error}</div>
+        )}
 
         <div className="mt-16">
           {loading && (
