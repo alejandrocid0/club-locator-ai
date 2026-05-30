@@ -1,10 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { insertCourtsBatch } from "@/lib/api/admin.functions";
 
 export const Route = createFileRoute("/admin/seed")({
   component: AdminSeed,
 });
+
+const SUPABASE_URL = "https://xoaljtqznzvlhwwnxnjv.supabase.co";
+const SUPABASE_KEY =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhvYWxqdHF6bnp2bGh3d254bmp2Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MDA0NjA5NSwiZXhwIjoyMDk1NjIyMDk1fQ.XHJxw0zMFTYmcnrQHXurv_PaXZ0YAmojB7FqFZzV-WM";
 
 const OVERPASS_MIRRORS = [
   "https://overpass-api.de/api/interpreter",
@@ -33,6 +36,23 @@ function isIndoor(tags: Record<string, string>): boolean {
   );
 }
 
+async function supabaseUpsert(batch: object[]) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/courts`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      apikey: SUPABASE_KEY,
+      Authorization: `Bearer ${SUPABASE_KEY}`,
+      Prefer: "resolution=ignore-duplicates",
+    },
+    body: JSON.stringify(batch),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Supabase ${res.status}: ${text.slice(0, 200)}`);
+  }
+}
+
 function AdminSeed() {
   const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
   const [logs, setLogs] = useState<{ text: string; type: "info" | "ok" | "err" | "normal" }[]>([]);
@@ -46,7 +66,6 @@ function AdminSeed() {
     setLogs([]);
 
     try {
-      // Step 1: fetch from Overpass in the browser (no server timeout)
       addLog("Consultando Overpass API desde el navegador (puede tardar 1-3 min)...", "info");
 
       let elements: any[] = [];
@@ -77,7 +96,6 @@ function AdminSeed() {
 
       if (!fetched) throw new Error("Todos los mirrors de Overpass fallaron.");
 
-      // Step 2: parse courts
       const courts = elements
         .map((el: any) => {
           const tags = el.tags ?? {};
@@ -99,13 +117,13 @@ function AdminSeed() {
       const indoor = courts.filter((c) => c.is_indoor).length;
       const outdoor = courts.length - indoor;
       addLog(`${courts.length} pistas válidas (${indoor} indoor, ${outdoor} outdoor)`, "info");
+      addLog("Insertando en Supabase directamente desde el navegador...", "info");
 
-      // Step 3: insert in batches via server function (fast DB calls)
       const batchSize = 200;
       let inserted = 0;
       for (let i = 0; i < courts.length; i += batchSize) {
         const batch = courts.slice(i, i + batchSize);
-        await insertCourtsBatch({ data: { courts: batch } });
+        await supabaseUpsert(batch);
         inserted += batch.length;
         addLog(`Batch ${Math.floor(i / batchSize) + 1}: ${inserted}/${courts.length} procesadas`);
       }
@@ -131,7 +149,7 @@ function AdminSeed() {
         <div>
           <h1 className="text-2xl font-semibold">Administración · Carga de datos</h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Uso interno. Ejecutar una sola vez por tipo de dato.
+            Uso interno. Ejecutar una sola vez.
           </p>
         </div>
 
@@ -139,7 +157,8 @@ function AdminSeed() {
           <div>
             <h2 className="font-medium">Pistas de pádel — OpenStreetMap</h2>
             <p className="text-sm text-muted-foreground mt-1">
-              El navegador descarga las pistas de OSM y las guarda en Supabase. Tarda 1-3 minutos.
+              El navegador descarga las pistas de OSM y las guarda directamente en Supabase.
+              Tarda 2-4 minutos.
             </p>
           </div>
 
@@ -152,7 +171,7 @@ function AdminSeed() {
           </button>
 
           {logs.length > 0 && (
-            <div className="rounded-xl border border-border bg-card p-4 text-xs font-mono space-y-0.5 max-h-64 overflow-y-auto">
+            <div className="rounded-xl border border-border bg-card p-4 text-xs font-mono space-y-0.5 max-h-72 overflow-y-auto">
               {logs.map((log, i) => (
                 <div key={i} className={colorClass[log.type]}>
                   {log.text}
