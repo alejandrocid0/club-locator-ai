@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminSeedRouteImport } from './routes/admin/seed'
+import { Route as AdminPlaytomicRouteImport } from './routes/admin/playtomic'
 
 const AdminRoute = AdminRouteImport.update({
   id: '/admin',
@@ -28,29 +29,37 @@ const AdminSeedRoute = AdminSeedRouteImport.update({
   path: '/seed',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminPlaytomicRoute = AdminPlaytomicRouteImport.update({
+  id: '/playtomic',
+  path: '/playtomic',
+  getParentRoute: () => AdminRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/admin/seed': typeof AdminSeedRoute
+  '/admin/playtomic': typeof AdminPlaytomicRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/admin/seed': typeof AdminSeedRoute
+  '/admin/playtomic': typeof AdminPlaytomicRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/admin/seed': typeof AdminSeedRoute
+  '/admin/playtomic': typeof AdminPlaytomicRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/admin' | '/admin/seed'
+  fullPaths: '/' | '/admin' | '/admin/seed' | '/admin/playtomic'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/admin' | '/admin/seed'
-  id: '__root__' | '/' | '/admin' | '/admin/seed'
+  to: '/' | '/admin' | '/admin/seed' | '/admin/playtomic'
+  id: '__root__' | '/' | '/admin' | '/admin/seed' | '/admin/playtomic'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -81,15 +90,24 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminSeedRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/playtomic': {
+      id: '/admin/playtomic'
+      path: '/playtomic'
+      fullPath: '/admin/playtomic'
+      preLoaderRoute: typeof AdminPlaytomicRouteImport
+      parentRoute: typeof AdminRoute
+    }
   }
 }
 
 interface AdminRouteChildren {
   AdminSeedRoute: typeof AdminSeedRoute
+  AdminPlaytomicRoute: typeof AdminPlaytomicRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
   AdminSeedRoute: AdminSeedRoute,
+  AdminPlaytomicRoute: AdminPlaytomicRoute,
 }
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
