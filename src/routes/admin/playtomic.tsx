@@ -8,7 +8,8 @@ export const Route = createFileRoute("/admin/playtomic")({
 const SUPABASE_URL = "https://xoaljtqznzvlhwwnxnjv.supabase.co";
 const SUPABASE_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhvYWxqdHF6bnp2bGh3d254bmp2Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MDA0NjA5NSwiZXhwIjoyMDk1NjIyMDk1fQ.XHJxw0zMFTYmcnrQHXurv_PaXZ0YAmojB7FqFZzV-WM";
-const PLAYTOMIC_API = "https://api.playtomic.io/v1/tenants";
+const PROXY_URL = "https://xoaljtqznzvlhwwnxnjv.supabase.co/functions/v1/playtomic-proxy";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhvYWxqdHF6bnp2bGh3d254bmp2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwNDYwOTUsImV4cCI6MjA5NTYyMjA5NX0.DleW3FDnTPWPEPDx_q0LyGMVIh50sQGF29HFqfVGFMI";
 
 const GRID: [number, number][] = [];
 for (let lat = 36.0; lat <= 44.0; lat += 0.5) {
@@ -23,8 +24,11 @@ for (let lat = 27.5; lat <= 29.5; lat += 0.5) {
 }
 
 async function fetchTenants(lat: number, lng: number) {
-  const url = `${PLAYTOMIC_API}?sport_id=PADEL&coordinate=${lat},${lng}&radius=40000&size=100&playtomic_status=ACTIVE,INACTIVE`;
-  const r = await fetch(url, { signal: AbortSignal.timeout(15000) });
+  const url = `${PROXY_URL}?lat=${lat}&lng=${lng}&radius=40000`;
+  const r = await fetch(url, {
+    headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` },
+    signal: AbortSignal.timeout(15000),
+  });
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
   return r.json() as Promise<any[]>;
 }
