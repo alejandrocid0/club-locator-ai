@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Seed Playtomic → Supabase</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 750px; margin: 40px auto; padding: 0 20px; background: #0f0f0f; color: #e0e0e0; }
+    h1 { font-size: 1.4rem; margin-bottom: 4px; }
+    p { color: #888; font-size: 0.9rem; }
+    button { background: #3b82f6; color: white; border: none; padding: 12px 24px; border-radius: 8px; font-size: 1rem; cursor: pointer; margin-top: 16px; margin-right: 8px; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    button.danger { background: #ef4444; }
+    #stats { display: flex; gap: 16px; margin-top: 20px; flex-wrap: wrap; }
+    .stat { background: #1a1a1a; border: 1px solid #333; border-radius: 8px; padding: 12px 20px; }
+    .stat-val { font-size: 1.8rem; font-weight: 700; color: #60a5fa; }
+    .stat-label { font-size: 0.75rem; color: #888; margin-top: 2px; }
+    #log { margin-top: 20px; background: #1a1a1a; border-radius: 8px; padding: 16px; font-size: 0.8rem; font-family: monospace; line-height: 1.7; max-height: 380px; overflow-y: auto; white-space: pre-wrap; }
+    .ok { color: #4ade80; } .err { color: #f87171; } .info { color: #93c5fd; } .warn { color: #fbbf24; }
+    progress { width: 100%; height: 6px; border-radius: 3px; margin-top: 12px; }
+  </style>
+</head>
+<body>
+  <h1>Seed Playtomic → Supabase</h1>
+  <p>Descarga todos los clubes de pádel de España desde Playtomic y los fusiona con los datos OSM existentes.</p>
+
+  <div id="stats">
+    <div class="stat"><div class="stat-val" id="s-clubs">0</div><div class="stat-label">Clubes encontrados</div></div>
+    <div class="stat"><div class="stat-val" id="s-courts">0</div><div class="stat-label">Pistas totales</div></div>
+    <div class="stat"><div class="stat-val" id="s-indoor">0</div><div class="stat-label">Indoor</div></div>
+    <div class="stat"><div class="stat-val" id="s-inserted">0</div><div class="stat-label">Insertadas en Supabase</div></div>
+  </div>
+
+  <progress id="progress" value="0" max="100" style="display:none"></progress>
+
+  <div style="margin-top:16px">
+    <button id="btn" onclick="runSeed()">Cargar clubes de Playtomic</button>
+    <button class="danger" onclick="runClear()" style="display:none" id="btn-clear">Borrar datos Playtomic anteriores</button>
+  </div>
+
+  <div id="log"></div>
+
+<script>
+const SUPABASE_URL = 'https://xoaljtqznzvlhwwnxnjv.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhvYWxqdHF6bnp2bGh3d254bmp2Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MDA0NjA5NSwiZXhwIjoyMDk1NjIyMDk1fQ.XHJxw0zMFTYmcnrQHXurv_PaXZ0YAmojB7FqFZzV-WM';
+const PLAYTOMIC_API = 'https://api.playtomic.io/v1/tenants';
+
+// Grid covering Spain (mainland + Canary Islands + Balearic Islands)
+// Each point + 40km radius, grid every ~55km to ensure full overlap
+const GRID = [];
+// Mainland Spain
+for (let lat = 36.0; lat <= 44.0; lat += 0.5) {
+  for (let lng = -9.5; lng <= 4.5; lng += 0.7) {
+    GRID.push([+lat.toFixed(2), +lng.toFixed(2)]);
+  }
+}
+// Canary Islands
+for (let lat = 27.5; lat <= 29.5; lat += 0.5) {
+  for (let lng = -18.2; lng <= -13.0; lng += 0.7) {
+    GRID.push([+lat.toFixed(2), +lng.toFixed(2)]);
+  }
+}
+
+const logEl = document.getElementById('log');
+const btn = document.getElementById('btn');
+
+let totalClubs = 0, totalCourts = 0, totalIndoor = 0, totalInserted = 0;
+
+function log(msg, cls = '') {
+  const span = document.createElement('span');
+  if (cls) span.className = cls;
+  span.textContent = msg + '\n';
+  logEl.appendChild(span);
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+function updateStats() {
+  document.getElementById('s-clubs').textContent = totalClubs.toLocaleString('es-ES');
+  document.getElementById('s-courts').textContent = totalCourts.toLocaleString('es-ES');
+  document.getElementById('s-indoor').textContent = totalIndoor.toLocaleString('es-ES');
+  document.getElementById('s-inserted').textContent = totalInserted.toLocaleString('es-ES');
+}
+
+async function fetchTenants(lat, lng, radius = 40000) {
+  const url = `${PLAYTOMIC_API}?sport_id=PADEL&coordinate=${lat},${lng}&radius=${radius}&size=100&playtomic_status=ACTIVE,INACTIVE`;
+  const r = await fetch(url, { signal: AbortSignal.timeout(15000) });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return r.json();
+}
+
+async function supabaseUpsert(rows) {
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/courts`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': SUPABASE_KEY,
+      'Authorization': `Bearer ${SUPABASE_KEY}`,
+      'Prefer': 'resolution=merge-duplicates',
+    },
+    body: JSON.stringify(rows),
+  });
+  if (!r.ok) {
+    const t = await r.text();
+    throw new Error(`Supabase ${r.status}: ${t.slice(0, 200)}`);
+  }
+}
+
+function parseTenant(tenant) {
+  const coord = tenant.address?.coordinate ?? {};
+  const lat = coord.lat;
+  const lng = coord.lon;
+  if (!lat || !lng) return [];
+
+  const resources = (tenant.resources ?? []).filter(r => r.sport_id === 'PADEL' && r.is_active);
+  if (resources.length === 0) {
+    // Club with no resources listed → insert 1 generic row
+    return [{
+      osm_id: null,
+      playtomic_id: tenant.tenant_id,
+      name: `Pista 1`,
+      club_name: tenant.tenant_name,
+      lat, lng,
+      is_indoor: false,
+      source: 'playtomic',
+      verified: true,
+    }];
+  }
+
+  return resources.map((res, i) => ({
+    osm_id: null,
+    playtomic_id: `${tenant.tenant_id}_${i}`,
+    name: res.name ?? `Pista ${i + 1}`,
+    club_name: tenant.tenant_name,
+    lat, lng,
+    is_indoor: res.properties?.resource_type === 'indoor',
+    source: 'playtomic',
+    verified: true,
+  }));
+}
+
+async function runSeed() {
+  btn.disabled = true;
+  logEl.innerHTML = '';
+  document.getElementById('btn-clear').style.display = 'inline-block';
+  totalClubs = 0; totalCourts = 0; totalIndoor = 0; totalInserted = 0;
+  updateStats();
+
+  const progress = document.getElementById('progress');
+  progress.style.display = 'block';
+
+  const seen = new Set(); // deduplicate by tenant_id
+  log(`Grid: ${GRID.length} puntos, radio 40km por punto`, 'info');
+  log('Iniciando descarga de clubes de Playtomic...', 'info');
+
+  let rows = [];
+  const BATCH_INSERT = 200;
+
+  for (let i = 0; i < GRID.length; i++) {
+    const [lat, lng] = GRID[i];
+    progress.value = Math.round((i / GRID.length) * 100);
+
+    try {
+      const tenants = await fetchTenants(lat, lng);
+      let newInBatch = 0;
+
+      for (const tenant of tenants) {
+        if (seen.has(tenant.tenant_id)) continue;
+        seen.add(tenant.tenant_id);
+        newInBatch++;
+        totalClubs++;
+
+        const courts = parseTenant(tenant);
+        totalCourts += courts.length;
+        totalIndoor += courts.filter(c => c.is_indoor).length;
+        rows.push(...courts);
+      }
+
+      if (newInBatch > 0) {
+        log(`[${i+1}/${GRID.length}] (${lat},${lng}) → ${newInBatch} clubes nuevos (total: ${totalClubs})`);
+        updateStats();
+      }
+
+      // Insert when batch is full
+      if (rows.length >= BATCH_INSERT) {
+        await supabaseUpsert(rows);
+        totalInserted += rows.length;
+        rows = [];
+        updateStats();
+      }
+
+      await new Promise(r => setTimeout(r, 80)); // rate limit
+    } catch (e) {
+      log(`  WARN (${lat},${lng}): ${e.message}`, 'warn');
+    }
+  }
+
+  // Insert remaining
+  if (rows.length > 0) {
+    await supabaseUpsert(rows);
+    totalInserted += rows.length;
+    updateStats();
+  }
+
+  progress.value = 100;
+  log(`\n✅ Completado: ${totalClubs} clubes, ${totalCourts} pistas (${totalIndoor} indoor, ${totalCourts - totalIndoor} outdoor)`, 'ok');
+  log(`   ${totalInserted} filas insertadas en Supabase`, 'ok');
+  btn.disabled = false;
+}
+
+async function runClear() {
+  if (!confirm('¿Borrar todos los datos de Playtomic de la tabla courts?')) return;
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/courts?source=eq.playtomic`, {
+    method: 'DELETE',
+    headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` },
+  });
+  log(r.ok ? '✅ Datos Playtomic eliminados' : `❌ Error: ${r.status}`, r.ok ? 'ok' : 'err');
+}
+</script>
+</body>
+</html>
