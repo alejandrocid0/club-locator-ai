@@ -26,8 +26,8 @@ export const analyzeLocation = createServerFn({ method: "POST" })
     const courts = await getCourtsInRadius(lat, lng, radius);
 
     // Step 4: Aggregate supply
-    const totalCourts = courts.length;
-    const indoorCourts = courts.filter((c) => c.is_indoor).length;
+    const totalCourts = courts.reduce((sum, c) => sum + c.court_count, 0);
+    const indoorCourts = courts.filter((c) => c.is_indoor).reduce((sum, c) => sum + c.court_count, 0);
     const outdoorCourts = totalCourts - indoorCourts;
     const indoorRatio = totalCourts > 0 ? indoorCourts / totalCourts : 0;
 
@@ -97,7 +97,7 @@ export const analyzeLocation = createServerFn({ method: "POST" })
         population,
       },
       supply: {
-        clubs: courts.length,
+        clubs: courts.length, // número de clubes únicos
         totalCourts,
         indoor: indoorCourts,
         outdoor: outdoorCourts,
