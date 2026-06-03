@@ -55,12 +55,6 @@ function parseTenant(tenant: any) {
   const lng = coord.lon;
   if (!lat || !lng) return [];
 
-  const addr = tenant.address ?? {};
-  const club_address = addr.street ?? null;
-  const club_city = addr.city ?? null;
-  const club_province = addr.province ?? addr.state ?? null;
-  const club_postal_code = addr.zip_code ?? addr.postal_code ?? null;
-
   const resources = (tenant.resources ?? []).filter(
     (r: any) => r.sport_id === "PADEL" && r.is_active,
   );
@@ -70,10 +64,6 @@ function parseTenant(tenant: any) {
     club_name: tenant.tenant_name,
     lat,
     lng,
-    address: club_address,
-    city: club_city,
-    province: club_province,
-    postal_code: club_postal_code,
     source: "playtomic",
     verified: true,
   };
