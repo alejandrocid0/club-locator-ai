@@ -63,6 +63,9 @@ export function generateMockAnalysis(query: string, radius: number) {
         (i + 1),
       type: i % 3 === 0 ? "indoor" : "outdoor",
       courts: Math.round(rand(3, 10, 20 + i)),
+      distance_km: Math.round(rand(0.5, radius * 0.9, 50 + i) * 10) / 10,
+      lat: 0,
+      lng: 0,
       offset: {
         x: rand(-1, 1, 30 + i),
         y: rand(-1, 1, 40 + i),
