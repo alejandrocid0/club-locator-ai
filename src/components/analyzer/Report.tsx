@@ -1,4 +1,7 @@
+import { lazy, Suspense } from "react";
 import type { AnalysisResult } from "@/lib/mock-analysis";
+
+const CompetitionMap = lazy(() => import("./CompetitionMap"));
 import {
   TrendingUp,
   Users,
@@ -340,72 +343,19 @@ export function Report({ data }: { data: AnalysisResult }) {
       <section>
         <SectionTitle kicker="06 · Mapa" title="Competencia en el radio analizado" />
         <Card className="p-2">
-          <div className="relative aspect-[16/9] rounded-xl overflow-hidden border border-border bg-[radial-gradient(circle_at_50%_50%,oklch(0.98_0.005_25),oklch(0.94_0.008_25))]">
-            {/* grid */}
-            <div
-              className="absolute inset-0 opacity-40"
-              style={{
-                backgroundImage:
-                  "linear-gradient(var(--color-border) 1px, transparent 1px), linear-gradient(90deg, var(--color-border) 1px, transparent 1px)",
-                backgroundSize: "48px 48px",
-              }}
+          <Suspense
+            fallback={
+              <div className="aspect-[16/9] rounded-xl bg-card-elevated animate-pulse flex items-center justify-center text-muted-foreground text-sm">
+                Cargando mapa…
+              </div>
+            }
+          >
+            <CompetitionMap
+              coords={data.coords}
+              radius={data.radius}
+              clubs={data.clubsNearby}
             />
-            {/* radius circles */}
-            {[0.4, 0.7, 1].map((s) => (
-              <div
-                key={s}
-                className="absolute left-1/2 top-1/2 rounded-full border border-primary/30"
-                style={{
-                  width: `${s * 70}%`,
-                  height: `${s * 70}%`,
-                  transform: "translate(-50%, -50%)",
-                  boxShadow: "inset 0 0 60px oklch(0.72 0.18 155 / 8%)",
-                }}
-              />
-            ))}
-            {/* center pin */}
-            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center">
-              <div className="size-3 rounded-full bg-primary shadow-[0_0_20px_var(--color-primary)]" />
-              <div className="mt-2 px-2 py-0.5 text-[10px] uppercase tracking-widest rounded bg-card-elevated border border-border text-foreground">
-                Ubicación
-              </div>
-            </div>
-            {/* clubs */}
-            {data.clubsNearby.map((c) => (
-              <div
-                key={c.id}
-                className="absolute group"
-                style={{
-                  left: `${50 + c.offset.x * 35}%`,
-                  top: `${50 + c.offset.y * 35}%`,
-                  transform: "translate(-50%, -50%)",
-                }}
-              >
-                <div
-                  className={`size-2.5 rounded-full ${
-                    c.type === "indoor"
-                      ? "bg-accent shadow-[0_0_12px_var(--color-accent)]"
-                      : "bg-success shadow-[0_0_12px_var(--color-success)]"
-                  }`}
-                />
-                <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute left-3 top-0 whitespace-nowrap px-2 py-1 rounded-md bg-card-elevated border border-border text-[11px]">
-                  {c.name} · {c.courts} pistas
-                </div>
-              </div>
-            ))}
-            {/* legend */}
-            <div className="absolute bottom-3 left-3 flex gap-3 text-xs bg-card-elevated/80 backdrop-blur border border-border rounded-lg px-3 py-2">
-              <span className="flex items-center gap-1.5">
-                <span className="size-2 rounded-full bg-accent" /> Indoor
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="size-2 rounded-full bg-success" /> Outdoor
-              </span>
-            </div>
-            <div className="absolute bottom-3 right-3 text-[10px] uppercase tracking-widest text-muted-foreground bg-card-elevated/80 backdrop-blur border border-border rounded-lg px-3 py-2">
-              Radio {data.radius} km
-            </div>
-          </div>
+          </Suspense>
         </Card>
       </section>
 

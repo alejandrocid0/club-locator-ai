@@ -97,7 +97,7 @@ export const analyzeLocation = createServerFn({ method: "POST" })
         population,
       },
       supply: {
-        clubs: 0,
+        clubs: courts.length,
         totalCourts,
         indoor: indoorCourts,
         outdoor: outdoorCourts,
@@ -119,11 +119,14 @@ export const analyzeLocation = createServerFn({ method: "POST" })
         punta: recommendedPeak,
         premium: Math.round(recommendedPeak * 1.4 * 100) / 100,
       },
-      clubsNearby: courts.slice(0, 12).map((c, i) => ({
+      clubsNearby: courts.slice(0, 15).map((c, i) => ({
         id: i,
-        name: c.name ?? `Pista ${i + 1}`,
+        name: c.club_name ?? c.name ?? `Club ${i + 1}`,
         type: c.is_indoor ? "indoor" : "outdoor",
-        courts: 1,
+        courts: c.court_count,
+        distance_km: Math.round(c.distance_m / 100) / 10,
+        lat: c.lat,
+        lng: c.lng,
         offset: {
           x:
             Math.cos((i / Math.max(courts.length, 1)) * 2 * Math.PI) *
