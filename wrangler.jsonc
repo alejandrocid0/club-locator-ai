@@ -1,8 +1,13 @@
 {
+  "$schema": "node_modules/wrangler/config-schema.json",
   "name": "club-locator-ai",
   "compatibility_date": "2026-06-05",
+  "compatibility_flags": ["nodejs_compat"],
   "main": "dist/server/server.js",
   "assets": {
     "directory": "dist/client"
+  },
+  "observability": {
+    "enabled": true
   }
 }
