@@ -119,7 +119,7 @@ export const analyzeLocation = createServerFn({ method: "POST" })
         punta: recommendedPeak,
         premium: Math.round(recommendedPeak * 1.4 * 100) / 100,
       },
-      clubsNearby: courts.slice(0, 15).map((c, i) => ({
+      clubsNearby: courts.map((c, i) => ({
         id: i,
         name: c.club_name ?? c.name ?? `Club ${i + 1}`,
         type: c.is_indoor ? "indoor" : "outdoor",
