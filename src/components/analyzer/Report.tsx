@@ -82,6 +82,7 @@ function Semaforo({ tone }: { tone: "green" | "yellow" | "red" }) {
 }
 
 const fmt = (n: number) => new Intl.NumberFormat("es-ES").format(n);
+const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 export function Report({ data }: { data: AnalysisResult }) {
   const supplyData = [
@@ -136,7 +137,7 @@ export function Report({ data }: { data: AnalysisResult }) {
           <Stat
             icon={ShieldAlert}
             label="Riesgo competitivo"
-            value={data.summary.competitiveRisk}
+            value={capitalize(data.summary.competitiveRisk)}
             tone={data.summary.competitiveRisk === "bajo" ? "success" : "warning"}
           />
         </div>
@@ -271,8 +272,8 @@ export function Report({ data }: { data: AnalysisResult }) {
                   },
                   {
                     label: "Saturación",
-                    local: data.benchmark.saturation,
-                    national: "media",
+                    local: capitalize(data.benchmark.saturation),
+                    national: "Media",
                   },
                 ].map((row) => (
                   <tr key={row.label} className="hover:bg-card-elevated transition-colors">
