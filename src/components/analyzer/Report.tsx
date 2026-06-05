@@ -89,7 +89,6 @@ function Semaforo({ tone }: { tone: "green" | "yellow" | "red" }) {
 }
 
 const fmt = (n: number) => new Intl.NumberFormat("es-ES").format(n);
-const eur = (n: number) => `€${fmt(n)}`;
 
 export function Report({ data }: { data: AnalysisResult }) {
   const supplyData = [
@@ -102,13 +101,11 @@ export function Report({ data }: { data: AnalysisResult }) {
       name: "Hab/pista",
       Ubicación: data.benchmark.habPerCourt,
       España: data.benchmark.spain.habPerCourt,
-      Premium: data.benchmark.premium.habPerCourt,
     },
     {
       name: "Hab/indoor",
       Ubicación: data.benchmark.habPerIndoor,
       España: data.benchmark.spain.habPerIndoor,
-      Premium: data.benchmark.premium.habPerIndoor,
     },
   ];
 
@@ -124,7 +121,7 @@ export function Report({ data }: { data: AnalysisResult }) {
       {/* 1. Resumen ejecutivo */}
       <section>
         <SectionTitle kicker="01 · Resumen ejecutivo" title="Score de oportunidad" />
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <Card className="p-6 lg:col-span-2 relative overflow-hidden">
             <div
               className="absolute inset-0 opacity-50"
@@ -148,24 +145,10 @@ export function Report({ data }: { data: AnalysisResult }) {
           </Card>
           <Stat icon={TrendingUp} label="Demanda" value={data.summary.demandLevel} tone="success" />
           <Stat
-            icon={Layers}
-            label="Déficit indoor"
-            value={`${data.summary.indoorDeficit}%`}
-            tone="warning"
-          />
-          <Stat
-            icon={Sparkles}
-            label="Potencial premium"
-            value={data.summary.premiumPotential}
-            tone="success"
-          />
-        </div>
-        <div className="mt-4">
-          <Stat
             icon={ShieldAlert}
             label="Riesgo competitivo"
             value={data.summary.competitiveRisk}
-            tone={data.summary.competitiveRisk === "Bajo" ? "success" : "warning"}
+            tone={data.summary.competitiveRisk === "bajo" ? "success" : "warning"}
           />
         </div>
       </section>
@@ -240,7 +223,7 @@ export function Report({ data }: { data: AnalysisResult }) {
 
       {/* 4. Benchmark */}
       <section>
-        <SectionTitle kicker="04 · Benchmark" title="Ratios vs. media España y costa premium" />
+        <SectionTitle kicker="04 · Benchmark" title="Ratios vs. media nacional" />
         <Card className="p-6">
           <div className="h-64">
             <ResponsiveContainer>
@@ -261,69 +244,76 @@ export function Report({ data }: { data: AnalysisResult }) {
                 />
                 <Bar dataKey="Ubicación" fill="var(--color-primary)" radius={[6, 6, 0, 0]} />
                 <Bar dataKey="España" fill="var(--color-muted-foreground)" radius={[6, 6, 0, 0]} />
-                <Bar dataKey="Premium" fill="var(--color-accent)" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
 
-          <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-            {[
-              {
-                label: "Habitantes por pista",
-                value: fmt(data.benchmark.habPerCourt),
-                tone: "green" as const,
-              },
-              {
-                label: "Habitantes por pista indoor",
-                value: fmt(data.benchmark.habPerIndoor),
-                tone: "green" as const,
-              },
-              {
-                label: "Ratio indoor / outdoor",
-                value: `${data.benchmark.indoorRatio}%`,
-                tone: "yellow" as const,
-              },
-              {
-                label: "Saturación de mercado",
-                value: data.benchmark.saturation,
-                tone:
-                  data.benchmark.saturation === "alta"
-                    ? ("red" as const)
-                    : data.benchmark.saturation === "media"
-                      ? ("yellow" as const)
-                      : ("green" as const),
-              },
-            ].map((row) => (
-              <div
-                key={row.label}
-                className="flex items-center justify-between rounded-xl border border-border bg-card-elevated/60 px-4 py-3"
-              >
-                <div className="flex items-center gap-3">
-                  <Semaforo tone={row.tone} />
-                  <span className="text-muted-foreground">{row.label}</span>
-                </div>
-                <span className="font-medium tabular-nums">{row.value}</span>
-              </div>
-            ))}
+          {/* Tabla comparativa */}
+          <div className="mt-6 overflow-hidden rounded-xl border border-border">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border bg-card-elevated/60">
+                  <th className="px-4 py-3 text-left text-xs uppercase tracking-wider text-muted-foreground font-medium">Métrica</th>
+                  <th className="px-4 py-3 text-right text-xs uppercase tracking-wider text-primary font-medium">Este radio</th>
+                  <th className="px-4 py-3 text-right text-xs uppercase tracking-wider text-muted-foreground font-medium">Media España</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {[
+                  {
+                    label: "Hab. por pista",
+                    local: fmt(data.benchmark.habPerCourt),
+                    national: fmt(data.benchmark.spain.habPerCourt),
+                    better: data.benchmark.habPerCourt > data.benchmark.spain.habPerCourt,
+                  },
+                  {
+                    label: "Hab. por pista indoor",
+                    local: data.benchmark.habPerIndoor > 0 ? fmt(data.benchmark.habPerIndoor) : "—",
+                    national: fmt(data.benchmark.spain.habPerIndoor),
+                    better: data.benchmark.habPerIndoor > data.benchmark.spain.habPerIndoor,
+                  },
+                  {
+                    label: "% pistas indoor",
+                    local: `${data.benchmark.indoorRatio}%`,
+                    national: `${data.benchmark.spain.indoorRatio}%`,
+                    better: data.benchmark.indoorRatio >= data.benchmark.spain.indoorRatio,
+                  },
+                  {
+                    label: "% pistas outdoor",
+                    local: `${data.benchmark.outdoorRatio}%`,
+                    national: `${data.benchmark.spain.outdoorRatio}%`,
+                    better: null,
+                  },
+                  {
+                    label: "Saturación",
+                    local: data.benchmark.saturation,
+                    national: "media",
+                    better: data.benchmark.saturation === "baja",
+                  },
+                ].map((row) => (
+                  <tr key={row.label} className="hover:bg-card-elevated/30 transition-colors">
+                    <td className="px-4 py-3 text-muted-foreground">{row.label}</td>
+                    <td className={`px-4 py-3 text-right font-semibold tabular-nums ${
+                      row.better === null ? "text-foreground" : row.better ? "text-success" : "text-destructive"
+                    }`}>{row.local}</td>
+                    <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">{row.national}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </Card>
       </section>
 
       {/* 5. Pricing */}
       <section>
-        <SectionTitle kicker="05 · Pricing" title="Pricing recomendado por franja" />
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <SectionTitle kicker="05 · Pricing" title="Pricing de referencia nacional" />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-lg">
           {[
             { label: "Hora valle", value: data.pricing.valle, hint: "L-V mañanas" },
             { label: "Hora punta", value: data.pricing.punta, hint: "L-V 18-22h" },
-            { label: "Premium", value: data.pricing.premium, hint: "Sábado prime + indoor" },
-          ].map((p, i) => (
-            <Card key={p.label} className="p-6 relative overflow-hidden">
-              {i === 2 && (
-                <div className="absolute top-3 right-3 text-[10px] uppercase tracking-widest px-2 py-0.5 rounded-full bg-primary/15 text-primary border border-primary/30">
-                  Top tier
-                </div>
-              )}
+          ].map((p) => (
+            <Card key={p.label} className="p-6">
               <div className="text-xs uppercase tracking-wider text-muted-foreground">
                 {p.label}
               </div>
