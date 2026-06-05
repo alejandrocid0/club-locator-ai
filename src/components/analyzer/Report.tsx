@@ -82,6 +82,7 @@ function Semaforo({ tone }: { tone: "green" | "yellow" | "red" }) {
 }
 
 const fmt = (n: number) => new Intl.NumberFormat("es-ES").format(n);
+const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 export function Report({ data }: { data: AnalysisResult }) {
   const supplyData = [
@@ -99,6 +100,11 @@ export function Report({ data }: { data: AnalysisResult }) {
       name: "Hab/indoor",
       Ubicación: data.benchmark.habPerIndoor,
       España: data.benchmark.spain.habPerIndoor,
+    },
+    {
+      name: "Hab/outdoor",
+      Ubicación: data.benchmark.habPerOutdoor,
+      España: data.benchmark.spain.habPerOutdoor,
     },
   ];
 
@@ -136,7 +142,7 @@ export function Report({ data }: { data: AnalysisResult }) {
           <Stat
             icon={ShieldAlert}
             label="Riesgo competitivo"
-            value={data.summary.competitiveRisk}
+            value={capitalize(data.summary.competitiveRisk)}
             tone={data.summary.competitiveRisk === "bajo" ? "success" : "warning"}
           />
         </div>
@@ -260,6 +266,11 @@ export function Report({ data }: { data: AnalysisResult }) {
                     national: fmt(data.benchmark.spain.habPerIndoor),
                   },
                   {
+                    label: "Hab. por pista outdoor",
+                    local: data.benchmark.habPerOutdoor > 0 ? fmt(data.benchmark.habPerOutdoor) : "—",
+                    national: fmt(data.benchmark.spain.habPerOutdoor),
+                  },
+                  {
                     label: "% pistas indoor",
                     local: `${data.benchmark.indoorRatio}%`,
                     national: `${data.benchmark.spain.indoorRatio}%`,
@@ -271,8 +282,8 @@ export function Report({ data }: { data: AnalysisResult }) {
                   },
                   {
                     label: "Saturación",
-                    local: data.benchmark.saturation,
-                    national: "media",
+                    local: capitalize(data.benchmark.saturation),
+                    national: "Media",
                   },
                 ].map((row) => (
                   <tr key={row.label} className="hover:bg-card-elevated transition-colors">

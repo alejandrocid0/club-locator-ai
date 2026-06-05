@@ -44,6 +44,7 @@ export const analyzeLocation = createServerFn({ method: "POST" })
     // Step 5: Ratios
     const habPerCourt = totalCourts > 0 ? Math.round(population / totalCourts) : population;
     const habPerIndoor = indoorCourts > 0 ? Math.round(population / indoorCourts) : null;
+    const habPerOutdoor = outdoorCourts > 0 ? Math.round(population / outdoorCourts) : null;
     const ratioVsNational = totalCourts > 0 ? habPerCourt / NATIONAL_INHABITANTS_PER_COURT : 999;
     const saturation =
       ratioVsNational > 2.0
@@ -114,12 +115,14 @@ export const analyzeLocation = createServerFn({ method: "POST" })
       benchmark: {
         habPerCourt,
         habPerIndoor: habPerIndoor ?? 0,
+        habPerOutdoor: habPerOutdoor ?? 0,
         indoorRatio: Math.round(indoorRatio * 100),
         outdoorRatio: Math.round((1 - indoorRatio) * 100),
         saturation,
         spain: {
           habPerCourt: NATIONAL_INHABITANTS_PER_COURT,
           habPerIndoor: NATIONAL_INHABITANTS_PER_INDOOR,
+          habPerOutdoor: Math.round(NATIONAL_INHABITANTS_PER_COURT / (1 - NATIONAL_INDOOR_RATIO)),
           indoorRatio: Math.round(NATIONAL_INDOOR_RATIO * 100),
           outdoorRatio: Math.round((1 - NATIONAL_INDOOR_RATIO) * 100),
         },
