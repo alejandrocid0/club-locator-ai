@@ -16,7 +16,7 @@ export function SearchBar({
   return (
     <div className="w-full max-w-3xl mx-auto">
       <div className="relative group">
-        <div className="relative flex items-center gap-2 rounded-2xl border border-border bg-card p-2 shadow-[var(--shadow-elegant)] focus-within:border-primary/50 transition-colors">
+        <div className="relative flex items-center gap-2 rounded-lg border border-border bg-card p-2 focus-within:border-primary transition-colors">
           <div className="pl-3 text-muted-foreground">
             <MapPin className="size-5" />
           </div>
@@ -31,7 +31,7 @@ export function SearchBar({
             size="lg"
             disabled={!query || loading}
             onClick={() => onAnalyze(query, FIXED_RADIUS)}
-            className="rounded-xl bg-primary text-primary-foreground font-medium hover:bg-primary/90"
+            className="rounded-md bg-primary text-primary-foreground font-bold shadow-none hover:bg-primary/90"
           >
             {loading ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />}
             <span className="ml-2">Analizar</span>

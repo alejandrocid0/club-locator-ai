@@ -47,7 +47,7 @@ export function LocationPicker({
 
   return (
     <div className="w-full max-w-3xl mx-auto space-y-4">
-      <div className="relative flex items-center gap-2 rounded-2xl border border-border bg-card p-2 shadow-[var(--shadow-elegant)] focus-within:border-primary/50 transition-colors">
+      <div className="relative flex items-center gap-2 rounded-lg border border-border bg-card p-2 focus-within:border-primary transition-colors">
         <div className="pl-3 text-muted-foreground">
           <MapPin className="size-5" />
         </div>
@@ -63,7 +63,7 @@ export function LocationPicker({
           size="lg"
           disabled={!query.trim() || geocoding || loading}
           onClick={handleSearch}
-          className="rounded-xl bg-primary text-primary-foreground font-medium hover:bg-primary/90"
+          className="rounded-md bg-primary text-primary-foreground font-bold shadow-none hover:bg-primary/90"
         >
           {geocoding ? (
             <Loader2 className="size-4 animate-spin" />
@@ -77,7 +77,7 @@ export function LocationPicker({
       {geoError && <p className="text-sm text-destructive text-center">{geoError}</p>}
 
       {pin && (
-        <div className="rounded-2xl border border-border overflow-hidden shadow-[var(--shadow-elegant)]">
+        <div className="rounded-lg border border-border overflow-hidden">
           <div className="h-52">
             <Suspense
               fallback={
@@ -107,7 +107,7 @@ export function LocationPicker({
               size="lg"
               disabled={loading}
               onClick={() => onAnalyze(query, pin.lat, pin.lng, FIXED_RADIUS)}
-              className="shrink-0 rounded-xl bg-primary text-primary-foreground font-medium hover:bg-primary/90"
+              className="shrink-0 rounded-md bg-primary text-primary-foreground font-bold shadow-none hover:bg-primary/90"
             >
               {loading ? <Loader2 className="size-4 animate-spin mr-2" /> : null}
               {loading ? "Analizando…" : "Analizar esta ubicación"}
