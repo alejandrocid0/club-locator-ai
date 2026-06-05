@@ -2,14 +2,12 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "club-locator-ai",
   "compatibility_date": "2026-06-05",
-  "observability": {
-    "enabled": true
-  },
-  "main": "@tanstack/react-start/server-entry",
-  "compatibility_flags": [
-    "nodejs_compat"
-  ],
+  "compatibility_flags": ["nodejs_compat"],
+  "main": "dist/server/server.js",
   "assets": {
     "directory": "dist/client"
+  },
+  "observability": {
+    "enabled": true
   }
 }
