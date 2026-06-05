@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { SearchBar } from "@/components/analyzer/SearchBar";
+import { LocationPicker } from "@/components/analyzer/LocationPicker";
 import { Report } from "@/components/analyzer/Report";
 import { analyzeLocation } from "@/lib/api/analyze.functions";
 import { generateMockAnalysis, type AnalysisResult } from "@/lib/mock-analysis";
@@ -24,15 +24,14 @@ function Index() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleAnalyze = async (query: string, radius: number) => {
+  const handleAnalyze = async (query: string, lat: number, lng: number, radius: number) => {
     setLoading(true);
     setError(null);
 
     try {
-      const data = await analyzeLocation({ data: { query, radius } });
+      const data = await analyzeLocation({ data: { query, radius, lat, lng } });
       setResult(data as AnalysisResult);
     } catch (err) {
-      // Fallback to mock if backend not available
       console.warn("Backend not available, using mock data:", err);
       setResult(generateMockAnalysis(query, radius));
     } finally {
@@ -57,7 +56,7 @@ function Index() {
         </div>
 
         <div className="mt-10">
-          <SearchBar onAnalyze={handleAnalyze} loading={loading} />
+          <LocationPicker onAnalyze={handleAnalyze} loading={loading} />
         </div>
 
         {error && (

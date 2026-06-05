@@ -12,12 +12,22 @@ const NATIONAL_AVG_PEAK = 14.0;
 const SPAIN_AVG_DENSITY = 93; // hab/km²
 
 export const analyzeLocation = createServerFn({ method: "POST" })
-  .inputValidator(z.object({ query: z.string().min(1), radius: z.number().min(1).max(50) }))
+  .inputValidator(
+    z.object({
+      query: z.string().min(1),
+      radius: z.number().min(1).max(50),
+      lat: z.number().optional(),
+      lng: z.number().optional(),
+    }),
+  )
   .handler(async ({ data }) => {
     const { query, radius } = data;
 
-    // Step 1: Geocode
-    const { lat, lng, address } = await geocode(query);
+    // Step 1: Use provided coords (from map pin) or geocode as fallback
+    const { lat, lng, address } =
+      data.lat && data.lng
+        ? { lat: data.lat, lng: data.lng, address: query }
+        : await geocode(query);
 
     // Step 2: Population from Supabase PostGIS (falls back to estimate)
     const population = await getPopulation(lat, lng, radius);
