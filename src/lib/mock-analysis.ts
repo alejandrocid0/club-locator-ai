@@ -42,10 +42,11 @@ export function generateMockAnalysis(query: string, radius: number) {
     benchmark: {
       habPerCourt,
       habPerIndoor,
+      habPerOutdoor: Math.round(population / Math.max(1, outdoorCourts)),
       indoorRatio: Math.round((indoorCourts / totalCourts) * 100),
       outdoorRatio: Math.round((outdoorCourts / totalCourts) * 100),
       saturation: clubs > 18 ? "alta" : clubs > 10 ? "media" : "baja",
-      spain: { habPerCourt: 3800, habPerIndoor: 18000, indoorRatio: 21, outdoorRatio: 79 },
+      spain: { habPerCourt: 3800, habPerIndoor: 18000, habPerOutdoor: 4810, indoorRatio: 21, outdoorRatio: 79 },
     },
     pricing: {
       valle: Math.round(rand(14, 22, 12)),

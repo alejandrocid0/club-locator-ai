@@ -101,6 +101,11 @@ export function Report({ data }: { data: AnalysisResult }) {
       Ubicación: data.benchmark.habPerIndoor,
       España: data.benchmark.spain.habPerIndoor,
     },
+    {
+      name: "Hab/outdoor",
+      Ubicación: data.benchmark.habPerOutdoor,
+      España: data.benchmark.spain.habPerOutdoor,
+    },
   ];
 
   const scoreTone =
@@ -259,6 +264,11 @@ export function Report({ data }: { data: AnalysisResult }) {
                     label: "Hab. por pista indoor",
                     local: data.benchmark.habPerIndoor > 0 ? fmt(data.benchmark.habPerIndoor) : "—",
                     national: fmt(data.benchmark.spain.habPerIndoor),
+                  },
+                  {
+                    label: "Hab. por pista outdoor",
+                    local: data.benchmark.habPerOutdoor > 0 ? fmt(data.benchmark.habPerOutdoor) : "—",
+                    national: fmt(data.benchmark.spain.habPerOutdoor),
                   },
                   {
                     label: "% pistas indoor",
