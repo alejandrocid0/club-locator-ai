@@ -38,28 +38,28 @@ const AdminPlaytomicRoute = AdminPlaytomicRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
-  '/admin/seed': typeof AdminSeedRoute
   '/admin/playtomic': typeof AdminPlaytomicRoute
+  '/admin/seed': typeof AdminSeedRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
-  '/admin/seed': typeof AdminSeedRoute
   '/admin/playtomic': typeof AdminPlaytomicRoute
+  '/admin/seed': typeof AdminSeedRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
-  '/admin/seed': typeof AdminSeedRoute
   '/admin/playtomic': typeof AdminPlaytomicRoute
+  '/admin/seed': typeof AdminSeedRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/admin' | '/admin/seed' | '/admin/playtomic'
+  fullPaths: '/' | '/admin' | '/admin/playtomic' | '/admin/seed'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/admin' | '/admin/seed' | '/admin/playtomic'
-  id: '__root__' | '/' | '/admin' | '/admin/seed' | '/admin/playtomic'
+  to: '/' | '/admin' | '/admin/playtomic' | '/admin/seed'
+  id: '__root__' | '/' | '/admin' | '/admin/playtomic' | '/admin/seed'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -101,13 +101,13 @@ declare module '@tanstack/react-router' {
 }
 
 interface AdminRouteChildren {
-  AdminSeedRoute: typeof AdminSeedRoute
   AdminPlaytomicRoute: typeof AdminPlaytomicRoute
+  AdminSeedRoute: typeof AdminSeedRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
-  AdminSeedRoute: AdminSeedRoute,
   AdminPlaytomicRoute: AdminPlaytomicRoute,
+  AdminSeedRoute: AdminSeedRoute,
 }
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
