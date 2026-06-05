@@ -44,13 +44,12 @@ function Index() {
       <header className="relative border-b border-border bg-background">
         <div className="max-w-7xl mx-auto px-6 py-5 flex items-center justify-between">
           <img src={logo} alt="PadelRenting" className="h-7 w-auto" />
-          <div className="text-xs text-muted-foreground hidden sm:block">Location Intelligence</div>
         </div>
       </header>
 
       <main className="relative max-w-7xl mx-auto px-6 pt-20 pb-24">
         <div className="text-center max-w-2xl mx-auto">
-          <h1 className="text-4xl sm:text-5xl font-semibold tracking-tight text-foreground">
+          <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-foreground">
             Análisis de ubicaciones
           </h1>
         </div>

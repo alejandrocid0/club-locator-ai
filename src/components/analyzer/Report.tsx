@@ -28,7 +28,7 @@ import {
 function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return (
     <div
-      className={`rounded-2xl border border-border bg-[var(--gradient-surface)] backdrop-blur shadow-[var(--shadow-elegant)] ${className}`}
+      className={`rounded-xl border border-border bg-card shadow-sm ${className}`}
     >
       {children}
     </div>
@@ -37,9 +37,9 @@ function Card({ children, className = "" }: { children: React.ReactNode; classNa
 
 function SectionTitle({ kicker, title }: { kicker: string; title: string }) {
   return (
-    <div className="mb-6">
-      <div className="text-xs uppercase tracking-[0.2em] text-primary/80">{kicker}</div>
-      <h2 className="mt-1 text-2xl font-semibold tracking-tight text-foreground">{title}</h2>
+    <div className="mb-6 border-l-4 border-primary pl-4">
+      <div className="text-xs uppercase tracking-[0.2em] font-bold text-primary">{kicker}</div>
+      <h2 className="mt-1 text-2xl font-bold tracking-tight text-foreground">{title}</h2>
     </div>
   );
 }
@@ -57,23 +57,16 @@ function Stat({
   hint?: string;
   tone?: "default" | "success" | "warning" | "danger";
 }) {
-  const toneClass =
-    tone === "success"
-      ? "text-success"
-      : tone === "warning"
-        ? "text-warning"
-        : tone === "danger"
-          ? "text-destructive"
-          : "text-foreground";
+  const toneClass = "text-foreground";
   return (
-    <Card className="p-5">
+    <Card className="p-5 bg-card-elevated">
       <div className="flex items-center justify-between">
-        <div className="text-xs uppercase tracking-wider text-muted-foreground">{label}</div>
-        <div className="rounded-lg bg-card-elevated p-1.5 text-primary">
+        <div className="text-xs uppercase tracking-wider font-bold text-muted-foreground">{label}</div>
+        <div className="rounded-full bg-primary p-1.5 text-primary-foreground">
           <Icon className="size-4" />
         </div>
       </div>
-      <div className={`mt-3 text-2xl font-semibold tabular-nums ${toneClass}`}>{value}</div>
+      <div className={`mt-3 text-2xl font-bold tabular-nums ${toneClass}`}>{value}</div>
       {hint && <div className="mt-1 text-xs text-muted-foreground">{hint}</div>}
     </Card>
   );
@@ -122,23 +115,19 @@ export function Report({ data }: { data: AnalysisResult }) {
       <section>
         <SectionTitle kicker="01 · Resumen ejecutivo" title="Score de oportunidad" />
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="p-6 lg:col-span-2 relative overflow-hidden">
-            <div
-              className="absolute inset-0 opacity-50"
-              style={{ background: "var(--gradient-hero)" }}
-            />
+          <Card className="p-6 lg:col-span-2 bg-primary text-primary-foreground border-primary">
             <div className="relative">
-              <div className="text-xs uppercase tracking-widest text-primary/80">
+              <div className="text-xs uppercase tracking-widest font-bold opacity-90">
                 Opportunity Score
               </div>
               <div className="mt-3 flex items-end gap-2">
-                <span className="text-6xl font-semibold tabular-nums bg-gradient-to-br from-primary to-primary-glow bg-clip-text text-transparent">
+                <span className="text-6xl font-bold tabular-nums">
                   {data.summary.opportunityScore.toFixed(1)}
                 </span>
-                <span className="text-2xl text-muted-foreground mb-1">/10</span>
+                <span className="text-2xl opacity-80 mb-1">/10</span>
               </div>
-              <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
-                <Sparkles className="size-4 text-primary" />
+              <div className="mt-3 flex items-center gap-2 text-sm opacity-90">
+                <Sparkles className="size-4" />
                 Ubicación recomendada para inversión estratégica
               </div>
             </div>
@@ -249,13 +238,13 @@ export function Report({ data }: { data: AnalysisResult }) {
           </div>
 
           {/* Tabla comparativa */}
-          <div className="mt-6 overflow-hidden rounded-xl border border-border">
+          <div className="mt-6 overflow-hidden rounded-lg border border-border">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-border bg-card-elevated/60">
-                  <th className="px-4 py-3 text-left text-xs uppercase tracking-wider text-muted-foreground font-medium">Métrica</th>
-                  <th className="px-4 py-3 text-right text-xs uppercase tracking-wider text-primary font-medium">Este radio</th>
-                  <th className="px-4 py-3 text-right text-xs uppercase tracking-wider text-muted-foreground font-medium">Media España</th>
+                <tr className="border-b-2 border-foreground bg-card-elevated">
+                  <th className="px-4 py-3 text-left text-xs uppercase tracking-wider text-foreground font-bold">Métrica</th>
+                  <th className="px-4 py-3 text-right text-xs uppercase tracking-wider text-foreground font-bold">Este radio</th>
+                  <th className="px-4 py-3 text-right text-xs uppercase tracking-wider text-foreground font-bold">Media España</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -264,38 +253,31 @@ export function Report({ data }: { data: AnalysisResult }) {
                     label: "Hab. por pista",
                     local: fmt(data.benchmark.habPerCourt),
                     national: fmt(data.benchmark.spain.habPerCourt),
-                    better: data.benchmark.habPerCourt > data.benchmark.spain.habPerCourt,
                   },
                   {
                     label: "Hab. por pista indoor",
                     local: data.benchmark.habPerIndoor > 0 ? fmt(data.benchmark.habPerIndoor) : "—",
                     national: fmt(data.benchmark.spain.habPerIndoor),
-                    better: data.benchmark.habPerIndoor > data.benchmark.spain.habPerIndoor,
                   },
                   {
                     label: "% pistas indoor",
                     local: `${data.benchmark.indoorRatio}%`,
                     national: `${data.benchmark.spain.indoorRatio}%`,
-                    better: data.benchmark.indoorRatio >= data.benchmark.spain.indoorRatio,
                   },
                   {
                     label: "% pistas outdoor",
                     local: `${data.benchmark.outdoorRatio}%`,
                     national: `${data.benchmark.spain.outdoorRatio}%`,
-                    better: null,
                   },
                   {
                     label: "Saturación",
                     local: data.benchmark.saturation,
                     national: "media",
-                    better: data.benchmark.saturation === "baja",
                   },
                 ].map((row) => (
-                  <tr key={row.label} className="hover:bg-card-elevated/30 transition-colors">
-                    <td className="px-4 py-3 text-muted-foreground">{row.label}</td>
-                    <td className={`px-4 py-3 text-right font-semibold tabular-nums ${
-                      row.better === null ? "text-foreground" : row.better ? "text-success" : "text-destructive"
-                    }`}>{row.local}</td>
+                  <tr key={row.label} className="hover:bg-card-elevated transition-colors">
+                    <td className="px-4 py-3 text-foreground">{row.label}</td>
+                    <td className="px-4 py-3 text-right font-bold tabular-nums text-foreground">{row.local}</td>
                     <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">{row.national}</td>
                   </tr>
                 ))}
@@ -343,7 +325,7 @@ export function Report({ data }: { data: AnalysisResult }) {
             <CompetitionMap
               coords={data.coords}
               radius={data.radius}
-              clubs={data.clubsNearby}
+              clubs={data.clubsNearby as any}
             />
           </Suspense>
         </Card>
@@ -352,21 +334,17 @@ export function Report({ data }: { data: AnalysisResult }) {
       {/* 7. Recomendación */}
       <section>
         <SectionTitle kicker="07 · Recomendación" title="Tesis de inversión" />
-        <Card className="p-8 relative overflow-hidden">
-          <div
-            className="absolute inset-0 opacity-60"
-            style={{ background: "var(--gradient-hero)" }}
-          />
-          <div className="relative">
+        <Card className="p-8">
+          <div>
             <div className="flex items-start gap-4">
-              <div className="rounded-xl bg-primary/15 border border-primary/30 p-3 text-primary">
+              <div className="rounded-md bg-primary p-3 text-primary-foreground">
                 <Gauge className="size-5" />
               </div>
               <div className="flex-1">
                 <p className="text-lg leading-relaxed text-foreground">
                   {data.recommendation.summary}
                 </p>
-                <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-1.5 text-sm text-primary">
+                <div className="mt-4 inline-flex items-center gap-2 rounded-md bg-primary px-4 py-1.5 text-sm font-bold text-primary-foreground">
                   <Sparkles className="size-3.5" />
                   Modelo recomendado: {data.recommendation.model}
                 </div>
@@ -374,27 +352,27 @@ export function Report({ data }: { data: AnalysisResult }) {
             </div>
 
             <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="rounded-xl border border-border bg-card-elevated/60 p-5">
-                <div className="flex items-center gap-2 text-success font-medium">
+              <div className="rounded-lg border border-border bg-card-elevated p-5">
+                <div className="flex items-center gap-2 text-foreground font-bold">
                   <CheckCircle2 className="size-4" /> Oportunidades
                 </div>
                 <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
                   {data.recommendation.opportunities.map((o) => (
                     <li key={o} className="flex gap-2">
-                      <span className="text-success mt-1">•</span>
+                      <span className="text-foreground mt-1">•</span>
                       <span>{o}</span>
                     </li>
                   ))}
                 </ul>
               </div>
-              <div className="rounded-xl border border-border bg-card-elevated/60 p-5">
-                <div className="flex items-center gap-2 text-warning font-medium">
+              <div className="rounded-lg border border-border bg-card-elevated p-5">
+                <div className="flex items-center gap-2 text-foreground font-bold">
                   <AlertTriangle className="size-4" /> Riesgos
                 </div>
                 <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
                   {data.recommendation.risks.map((r) => (
                     <li key={r} className="flex gap-2">
-                      <span className="text-warning mt-1">•</span>
+                      <span className="text-foreground mt-1">•</span>
                       <span>{r}</span>
                     </li>
                   ))}
