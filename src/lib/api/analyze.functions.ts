@@ -99,8 +99,7 @@ export const analyzeLocation = createServerFn({ method: "POST" })
       summary: {
         opportunityScore: score / 10,
         demandLevel: score >= 70 ? "Muy alta" : score >= 55 ? "Alta" : "Media",
-        indoorDeficit: Math.round((1 - indoorRatio / NATIONAL_INDOOR_RATIO) * 100),
-        premiumPotential: score >= 65 ? "Alto" : "Medio",
+        indoorDeficit: Math.max(0, Math.round((1 - indoorRatio / NATIONAL_INDOOR_RATIO) * 100)),
         competitiveRisk: risk,
       },
       demographics: {
@@ -116,18 +115,18 @@ export const analyzeLocation = createServerFn({ method: "POST" })
         habPerCourt,
         habPerIndoor: habPerIndoor ?? 0,
         indoorRatio: Math.round(indoorRatio * 100),
+        outdoorRatio: Math.round((1 - indoorRatio) * 100),
         saturation,
         spain: {
           habPerCourt: NATIONAL_INHABITANTS_PER_COURT,
           habPerIndoor: NATIONAL_INHABITANTS_PER_INDOOR,
           indoorRatio: Math.round(NATIONAL_INDOOR_RATIO * 100),
+          outdoorRatio: Math.round((1 - NATIONAL_INDOOR_RATIO) * 100),
         },
-        premium: { habPerCourt: 1800, habPerIndoor: 4200, indoorRatio: 58 },
       },
       pricing: {
         valle: recommendedValley,
         punta: recommendedPeak,
-        premium: Math.round(recommendedPeak * 1.4 * 100) / 100,
       },
       clubsNearby: courts.map((c, i) => ({
         id: i,

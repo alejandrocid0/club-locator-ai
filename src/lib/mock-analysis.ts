@@ -27,9 +27,8 @@ export function generateMockAnalysis(query: string, radius: number) {
     summary: {
       opportunityScore,
       demandLevel: opportunityScore > 8 ? "Muy alta" : opportunityScore > 6.5 ? "Alta" : "Media",
-      indoorDeficit: rand(35, 78, 6),
-      premiumPotential: opportunityScore > 7.5 ? "Alto" : "Medio",
-      competitiveRisk: clubs > 15 ? "Medio" : "Bajo",
+      indoorDeficit: Math.round(rand(35, 78, 6)),
+      competitiveRisk: clubs > 15 ? "medio" : "bajo",
     },
     demographics: {
       population,
@@ -44,14 +43,13 @@ export function generateMockAnalysis(query: string, radius: number) {
       habPerCourt,
       habPerIndoor,
       indoorRatio: Math.round((indoorCourts / totalCourts) * 100),
+      outdoorRatio: Math.round((outdoorCourts / totalCourts) * 100),
       saturation: clubs > 18 ? "alta" : clubs > 10 ? "media" : "baja",
-      spain: { habPerCourt: 3200, habPerIndoor: 9800, indoorRatio: 32 },
-      premium: { habPerCourt: 1800, habPerIndoor: 4200, indoorRatio: 58 },
+      spain: { habPerCourt: 3800, habPerIndoor: 18000, indoorRatio: 21, outdoorRatio: 79 },
     },
     pricing: {
       valle: Math.round(rand(14, 22, 12)),
       punta: Math.round(rand(24, 36, 13)),
-      premium: Math.round(rand(36, 52, 14)),
     },
     clubsNearby: Array.from({ length: clubs }).map((_, i) => ({
       id: i,
