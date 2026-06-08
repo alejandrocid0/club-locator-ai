@@ -119,12 +119,12 @@ export function Report({ data }: { data: AnalysisResult }) {
     <div className="space-y-12">
       {/* 1. Resumen ejecutivo */}
       <section>
-        <SectionTitle kicker="01 · Resumen ejecutivo" title="Score de oportunidad" />
+        <SectionTitle kicker="01 · Resumen ejecutivo" title="Puntuación de oportunidad" />
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <Card className="p-6 lg:col-span-2 bg-primary text-primary-foreground border-primary">
             <div className="relative">
               <div className="text-xs uppercase tracking-widest font-bold opacity-90">
-                Opportunity Score
+                Puntuación de oportunidad
               </div>
               <div className="mt-3 flex items-end gap-2">
                 <span className="text-6xl font-bold tabular-nums">
