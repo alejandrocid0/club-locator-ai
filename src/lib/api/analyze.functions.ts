@@ -144,7 +144,15 @@ export const analyzeLocation = createServerFn({ method: "POST" })
       addressResolved: address,
       summary: {
         opportunityScore: score,
-        demandLevel: score >= 7 ? "Muy alta" : score >= 5 ? "Alta" : "Media",
+        demandLevel: habPerCourt >= 6000
+          ? "Muy alta"
+          : habPerCourt >= bench.inhabitantsPerCourt
+            ? "Alta"
+            : habPerCourt >= 2500
+              ? "Media"
+              : habPerCourt >= 1500
+                ? "Baja"
+                : "Muy baja",
         indoorDeficit: Math.max(0, indoorDeficitPp),
         competitiveRisk: risk,
       },

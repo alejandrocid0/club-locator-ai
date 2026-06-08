@@ -26,7 +26,15 @@ export function generateMockAnalysis(query: string, radius: number) {
     coords: { lat: 40.4168 + rand(-0.4, 0.4, 9) / 5, lng: -3.7038 + rand(-0.4, 0.4, 10) / 5 },
     summary: {
       opportunityScore,
-      demandLevel: opportunityScore > 8 ? "Muy alta" : opportunityScore > 6.5 ? "Alta" : "Media",
+      demandLevel: habPerCourt >= 6000
+        ? "Muy alta"
+        : habPerCourt >= 3800
+          ? "Alta"
+          : habPerCourt >= 2500
+            ? "Media"
+            : habPerCourt >= 1500
+              ? "Baja"
+              : "Muy baja",
       indoorDeficit: Math.round(rand(35, 78, 6)),
       competitiveRisk: clubs > 15 ? "medio" : "bajo",
     },
