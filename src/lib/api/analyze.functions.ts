@@ -2,13 +2,11 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { geocode } from "./geocoding.server";
 import { getCourtsInRadius } from "./courts.server";
+import { getNationalBenchmarks } from "./benchmarks.server";
 import { getSupabaseClient } from "@/lib/supabase.server";
 
-const NATIONAL_INHABITANTS_PER_COURT = 3800;
-const NATIONAL_INHABITANTS_PER_INDOOR = 18000;
-const NATIONAL_INDOOR_RATIO = 0.21;
-const NATIONAL_AVG_VALLEY = 8.5;
-const NATIONAL_AVG_PEAK = 14.0;
+// Population density fallback (hab/km²) used only when INE census data is not
+// available for the queried area. Not a national benchmark, kept local.
 const SPAIN_AVG_DENSITY = 93;
 
 // Score weights
@@ -16,9 +14,9 @@ const SCORE_W_HAB_PER_COURT = 0.50;
 const SCORE_W_INDOOR_DEFICIT = 0.35;
 const SCORE_W_NEAREST_CLUB   = 0.15;
 
-// Factor 1 thresholds: hab/pista (piecewise: 1000→0, 3800→6, 5000→10)
+// Factor 1 thresholds: hab/pista (piecewise: MIN→0, national avg→6, MAX→10).
+// The neutral mid-point (score 6) is the national average, read from the DB.
 const SCORE_HAB_MAX = 5000; // ratio ≥ this → score 10
-const SCORE_HAB_MID = 3800; // national avg → score 6
 const SCORE_HAB_MIN = 1000; // ratio ≤ this → score 0
 
 // Factor 2 thresholds: indoor deficit in percentage points vs national
@@ -42,6 +40,14 @@ export const analyzeLocation = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { query, radius } = data;
 
+    // National benchmarks (editable from the `benchmarks` DB table)
+    const bench = await getNationalBenchmarks();
+    // Factor 1 neutral point = national average, clamped inside (MIN, MAX)
+    const habMid = Math.min(
+      SCORE_HAB_MAX - 1,
+      Math.max(SCORE_HAB_MIN + 1, bench.inhabitantsPerCourt),
+    );
+
     // Step 1: Use provided coords (from map pin) or geocode as fallback
     const { lat, lng, address } =
       data.lat && data.lng
@@ -64,23 +70,23 @@ export const analyzeLocation = createServerFn({ method: "POST" })
     const habPerCourt = totalCourts > 0 ? Math.round(population / totalCourts) : population;
     const habPerIndoor = indoorCourts > 0 ? Math.round(population / indoorCourts) : null;
     const habPerOutdoor = outdoorCourts > 0 ? Math.round(population / outdoorCourts) : null;
-    const saturationRatio = totalCourts > 0 ? habPerCourt / NATIONAL_INHABITANTS_PER_COURT : 999;
+    const saturationRatio = totalCourts > 0 ? habPerCourt / bench.inhabitantsPerCourt : 999;
     const saturation =
       saturationRatio > 2.0 ? "baja"
         : saturationRatio > 1.2 ? "media"
         : saturationRatio > 0.7 ? "alta"
         : "saturada";
-    const indoorDeficitPp = Math.round((NATIONAL_INDOOR_RATIO - indoorRatio) * 100);
+    const indoorDeficitPp = Math.round((bench.indoorRatio - indoorRatio) * 100);
 
     // Step 6: Opportunity score (3 factors)
-    // Factor 1: hab/pista ratio (50%) — piecewise: 1000→0, 3800→6, 5000→10
+    // Factor 1: hab/pista ratio (50%) — piecewise: MIN→0, national avg→6, MAX→10
     const f1 = habPerCourt >= SCORE_HAB_MAX
       ? 10
       : habPerCourt <= SCORE_HAB_MIN
         ? 0
-        : habPerCourt >= SCORE_HAB_MID
-          ? 6 + ((habPerCourt - SCORE_HAB_MID) / (SCORE_HAB_MAX - SCORE_HAB_MID)) * 4
-          : ((habPerCourt - SCORE_HAB_MIN) / (SCORE_HAB_MID - SCORE_HAB_MIN)) * 6;
+        : habPerCourt >= habMid
+          ? 6 + ((habPerCourt - habMid) / (SCORE_HAB_MAX - habMid)) * 4
+          : ((habPerCourt - SCORE_HAB_MIN) / (habMid - SCORE_HAB_MIN)) * 6;
 
     // Factor 2: indoor deficit in pp vs national (35%)
     const f2 = indoorDeficitPp >= SCORE_INDOOR_MAX_PP
@@ -103,9 +109,9 @@ export const analyzeLocation = createServerFn({ method: "POST" })
       (f1 * SCORE_W_HAB_PER_COURT + f2 * SCORE_W_INDOOR_DEFICIT + f3 * SCORE_W_NEAREST_CLUB) * 10
     ) / 10;
 
-    const risk = habPerCourt < NATIONAL_INHABITANTS_PER_COURT * 0.7
+    const risk = habPerCourt < bench.inhabitantsPerCourt * 0.7
       ? "alto"
-      : habPerCourt < NATIONAL_INHABITANTS_PER_COURT * 1.2
+      : habPerCourt < bench.inhabitantsPerCourt * 1.2
         ? "medio"
         : "bajo";
 
@@ -121,10 +127,10 @@ export const analyzeLocation = createServerFn({ method: "POST" })
     const opportunities: string[] = [];
     const risks: string[] = [];
     if (indoorDeficitPp > 5) opportunities.push("Déficit de pistas indoor en la zona");
-    if (habPerCourt > NATIONAL_INHABITANTS_PER_COURT * 1.5)
+    if (habPerCourt > bench.inhabitantsPerCourt * 1.5)
       opportunities.push("Mercado infraservido vs. media nacional");
     if (nearestKm > 3) opportunities.push(`Competidor más cercano a ${nearestKm.toFixed(1)} km`);
-    if (habPerCourt < NATIONAL_INHABITANTS_PER_COURT)
+    if (habPerCourt < bench.inhabitantsPerCourt)
       risks.push("Ratio hab/pista por debajo de la media nacional");
     if (totalCourts > 20) risks.push(`Alta densidad de pistas: ${totalCourts} en el radio`);
     if (nearestKm < 1) risks.push(`Competidor directo a ${nearestKm.toFixed(1)} km del punto`);
@@ -159,16 +165,16 @@ export const analyzeLocation = createServerFn({ method: "POST" })
         outdoorRatio: Math.round((1 - indoorRatio) * 100),
         saturation,
         spain: {
-          habPerCourt: NATIONAL_INHABITANTS_PER_COURT,
-          habPerIndoor: NATIONAL_INHABITANTS_PER_INDOOR,
-          habPerOutdoor: Math.round(NATIONAL_INHABITANTS_PER_COURT / (1 - NATIONAL_INDOOR_RATIO)),
-          indoorRatio: Math.round(NATIONAL_INDOOR_RATIO * 100),
-          outdoorRatio: Math.round((1 - NATIONAL_INDOOR_RATIO) * 100),
+          habPerCourt: bench.inhabitantsPerCourt,
+          habPerIndoor: bench.inhabitantsPerIndoor,
+          habPerOutdoor: Math.round(bench.inhabitantsPerCourt / (1 - bench.indoorRatio)),
+          indoorRatio: Math.round(bench.indoorRatio * 100),
+          outdoorRatio: Math.round((1 - bench.indoorRatio) * 100),
         },
       },
       pricing: {
-        valle: NATIONAL_AVG_VALLEY,
-        punta: NATIONAL_AVG_PEAK,
+        valle: bench.avgPriceValley,
+        punta: bench.avgPricePeak,
       },
       clubsNearby: courts.map((c, i) => ({
         id: i,

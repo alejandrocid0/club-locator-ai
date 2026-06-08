@@ -1,3 +1,6 @@
+import time
+from dataclasses import dataclass
+
 from db.connection import get_client
 from models.schemas import (
     DemographicsResult, SupplyResult, RatiosResult,
@@ -5,14 +8,61 @@ from models.schemas import (
 )
 
 
-NATIONAL_INHABITANTS_PER_COURT = 3800
-NATIONAL_INHABITANTS_PER_INDOOR = 18000
-NATIONAL_INDOOR_RATIO = 0.21
-NATIONAL_AVG_VALLEY = 8.50
-NATIONAL_AVG_PEAK = 14.00
+# National benchmarks live in the `benchmarks` table (scope='national',
+# scope_name='España') so they can be tuned from the database without code
+# changes. The dataclass defaults are a safety net used only when the table is
+# empty or unreachable — they mirror the seed data in backend/db/schema.sql.
+@dataclass
+class NationalBenchmarks:
+    inhabitants_per_court: float = 3800
+    inhabitants_per_indoor: float = 18000
+    indoor_ratio: float = 0.21
+    avg_price_valley: float = 8.50
+    avg_price_peak: float = 14.00
+
+
+_METRIC_MAP = {
+    "inhabitants_per_court": "inhabitants_per_court",
+    "inhabitants_per_indoor_court": "inhabitants_per_indoor",
+    "indoor_ratio": "indoor_ratio",
+    "avg_price_valley": "avg_price_valley",
+    "avg_price_peak": "avg_price_peak",
+}
+
+_CACHE_TTL = 300  # seconds
+_bench_cache: tuple[NationalBenchmarks, float] | None = None
+
+
+def get_national_benchmarks() -> NationalBenchmarks:
+    global _bench_cache
+    now = time.time()
+    if _bench_cache and _bench_cache[1] > now:
+        return _bench_cache[0]
+
+    bench = NationalBenchmarks()
+    try:
+        res = (
+            get_client()
+            .table("benchmarks")
+            .select("metric, value")
+            .eq("scope", "national")
+            .eq("scope_name", "España")
+            .execute()
+        )
+        for row in res.data or []:
+            attr = _METRIC_MAP.get(row.get("metric"))
+            val = row.get("value")
+            if attr and isinstance(val, (int, float)):
+                setattr(bench, attr, float(val))
+    except Exception:
+        pass  # Keep defaults on any failure.
+
+    _bench_cache = (bench, now + _CACHE_TTL)
+    return bench
 
 
 def calculate_ratios(demographics: DemographicsResult, supply: SupplyResult) -> RatiosResult:
+    bench = get_national_benchmarks()
     pop = demographics.population
     total = supply.total_courts
     indoor = supply.indoor_courts
@@ -22,7 +72,7 @@ def calculate_ratios(demographics: DemographicsResult, supply: SupplyResult) -> 
 
     # Saturation: compare local ratio vs national average
     # Lower ratio = more courts per person = more saturated
-    ratio_vs_national = inh_per_court / NATIONAL_INHABITANTS_PER_COURT if total > 0 else 999
+    ratio_vs_national = inh_per_court / bench.inhabitants_per_court if total > 0 else 999
 
     if ratio_vs_national > 2.0:
         saturation = "low"
@@ -33,13 +83,13 @@ def calculate_ratios(demographics: DemographicsResult, supply: SupplyResult) -> 
     else:
         saturation = "saturated"
 
-    indoor_deficit = (supply.indoor_ratio < NATIONAL_INDOOR_RATIO) or (indoor == 0)
+    indoor_deficit = (supply.indoor_ratio < bench.indoor_ratio) or (indoor == 0)
 
     return RatiosResult(
         inhabitants_per_court=inh_per_court,
         inhabitants_per_indoor_court=inh_per_indoor,
-        national_avg_inhabitants_per_court=NATIONAL_INHABITANTS_PER_COURT,
-        national_avg_inhabitants_per_indoor_court=NATIONAL_INHABITANTS_PER_INDOOR,
+        national_avg_inhabitants_per_court=bench.inhabitants_per_court,
+        national_avg_inhabitants_per_indoor_court=bench.inhabitants_per_indoor,
         saturation_level=saturation,
         indoor_deficit=indoor_deficit,
     )
@@ -57,14 +107,16 @@ def calculate_pricing(supply: SupplyResult, demographics: DemographicsResult) ->
         if clubs_with_pricing else None
     )
 
+    bench = get_national_benchmarks()
+
     # Income adjustment factor
     income_factor = 1.0
     if demographics.avg_income:
         national_avg_income = 32000
         income_factor = min(1.3, max(0.8, demographics.avg_income / national_avg_income))
 
-    base_valley = market_valley or NATIONAL_AVG_VALLEY
-    base_peak = market_peak or NATIONAL_AVG_PEAK
+    base_valley = market_valley or bench.avg_price_valley
+    base_peak = market_peak or bench.avg_price_peak
 
     return PricingResult(
         recommended_valley=round(base_valley * income_factor, 2),
@@ -81,20 +133,24 @@ def calculate_recommendation(
     pricing: PricingResult,
 ) -> RecommendationResult:
 
-    # Factor 1: hab/pista (50%) — piecewise: 1000→0, 3800→6, 5000→10
+    bench = get_national_benchmarks()
+    # Factor 1 neutral point (score 6) = national average, clamped inside (1000, 5000)
+    hab_mid = min(4999.0, max(1001.0, bench.inhabitants_per_court))
+
+    # Factor 1: hab/pista (50%) — piecewise: 1000→0, national avg→6, 5000→10
     hab_per_court = ratios.inhabitants_per_court
     if hab_per_court >= 5000:
         f1 = 10.0
-    elif hab_per_court >= 3800:
-        f1 = 6.0 + (hab_per_court - 3800) / (5000 - 3800) * 4.0
+    elif hab_per_court >= hab_mid:
+        f1 = 6.0 + (hab_per_court - hab_mid) / (5000 - hab_mid) * 4.0
     elif hab_per_court >= 1000:
-        f1 = (hab_per_court - 1000) / (3800 - 1000) * 6.0
+        f1 = (hab_per_court - 1000) / (hab_mid - 1000) * 6.0
     else:
         f1 = 0.0
 
     # Factor 2: indoor deficit in pp vs national (35%) — linear: -15pp→0, +15pp→10
     indoor_ratio = supply.indoor_ratio if supply.total_courts > 0 else 0.0
-    indoor_deficit_pp = (NATIONAL_INDOOR_RATIO - indoor_ratio) * 100
+    indoor_deficit_pp = (bench.indoor_ratio - indoor_ratio) * 100
     if indoor_deficit_pp >= 15:
         f2 = 10.0
     elif indoor_deficit_pp <= -15:
@@ -124,9 +180,9 @@ def calculate_recommendation(
         indoor_opportunity = "none"
 
     # Risk level
-    if hab_per_court < NATIONAL_INHABITANTS_PER_COURT * 0.7:
+    if hab_per_court < bench.inhabitants_per_court * 0.7:
         risk = "high"
-    elif hab_per_court < NATIONAL_INHABITANTS_PER_COURT * 1.2:
+    elif hab_per_court < bench.inhabitants_per_court * 1.2:
         risk = "medium"
     else:
         risk = "low"
@@ -146,7 +202,7 @@ def calculate_recommendation(
 
     if ratios.indoor_deficit:
         opportunities.append("Déficit de pistas indoor en la zona")
-    if ratios.inhabitants_per_court > NATIONAL_INHABITANTS_PER_COURT * 1.5:
+    if ratios.inhabitants_per_court > bench.inhabitants_per_court * 1.5:
         opportunities.append("Mercado claramente infraservido vs. media nacional")
     if demographics.population > 100000:
         opportunities.append("Masa crítica de población suficiente")
