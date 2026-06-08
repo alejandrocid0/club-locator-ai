@@ -81,44 +81,62 @@ def calculate_recommendation(
     pricing: PricingResult,
 ) -> RecommendationResult:
 
-    score = 50  # base
+    # Factor 1: hab/pista (50%) — piecewise: 1000→0, 3800→6, 5000→10
+    hab_per_court = ratios.inhabitants_per_court
+    if hab_per_court >= 5000:
+        f1 = 10.0
+    elif hab_per_court >= 3800:
+        f1 = 6.0 + (hab_per_court - 3800) / (5000 - 3800) * 4.0
+    elif hab_per_court >= 1000:
+        f1 = (hab_per_court - 1000) / (3800 - 1000) * 6.0
+    else:
+        f1 = 0.0
 
-    # Saturation adjustment
-    saturation_scores = {"low": +30, "medium": +15, "high": -10, "saturated": -25}
-    score += saturation_scores.get(ratios.saturation_level, 0)
+    # Factor 2: indoor deficit in pp vs national (35%) — linear: -15pp→0, +15pp→10
+    indoor_ratio = supply.indoor_ratio if supply.total_courts > 0 else 0.0
+    indoor_deficit_pp = (NATIONAL_INDOOR_RATIO - indoor_ratio) * 100
+    if indoor_deficit_pp >= 15:
+        f2 = 10.0
+    elif indoor_deficit_pp <= -15:
+        f2 = 0.0
+    else:
+        f2 = (indoor_deficit_pp - (-15)) / (15 - (-15)) * 10.0
 
-    # Indoor opportunity bonus
-    if ratios.indoor_deficit:
-        score += 15
+    # Factor 3: distance to nearest competitor (15%) — piecewise: 0.5→0, 2→5, 5→10
+    nearest_km = supply.clubs[0].distance_km if supply.clubs else 999.0
+    if nearest_km >= 5.0:
+        f3 = 10.0
+    elif nearest_km >= 2.0:
+        f3 = 5.0 + (nearest_km - 2.0) / (5.0 - 2.0) * 5.0
+    elif nearest_km >= 0.5:
+        f3 = (nearest_km - 0.5) / (2.0 - 0.5) * 5.0
+    else:
+        f3 = 0.0
+
+    score = round(f1 * 0.50 + f2 * 0.35 + f3 * 0.15, 1)
+
+    # Indoor opportunity label
+    if indoor_deficit_pp > 5:
         indoor_opportunity = "high"
-    elif supply.indoor_ratio < 0.35:
-        score += 5
+    elif indoor_deficit_pp > 0:
         indoor_opportunity = "moderate"
     else:
         indoor_opportunity = "none"
 
-    # Population scale bonus
-    if demographics.population > 150000:
-        score += 10
-    elif demographics.population > 50000:
-        score += 5
-
-    score = max(0, min(100, score))
-
     # Risk level
-    if ratios.saturation_level == "saturated":
+    if hab_per_court < NATIONAL_INHABITANTS_PER_COURT * 0.7:
         risk = "high"
-    elif ratios.saturation_level == "high":
+    elif hab_per_court < NATIONAL_INHABITANTS_PER_COURT * 1.2:
         risk = "medium"
     else:
         risk = "low"
 
     # Recommended model
-    if score >= 70 and ratios.indoor_deficit:
-        model = "Club indoor premium (6-8 pistas cubiertas)"
-    elif score >= 70:
+    if score >= 7 and indoor_deficit_pp > 5:
+        model = "Club indoor (6-8 pistas cubiertas)"
+    elif score >= 7:
         model = "Club mixto (4 indoor + 4 outdoor)"
-    elif score >= 50:
+    elif score >= 5:
         model = "Club outdoor con opción de expansión indoor"
     else:
         model = "Análisis ampliado recomendado antes de invertir"

@@ -55,7 +55,7 @@ class PricingResult(BaseModel):
 
 
 class RecommendationResult(BaseModel):
-    opportunity_score: int         # 0-100
+    opportunity_score: float       # 0-10
     competitive_risk: str          # 'low' | 'medium' | 'high'
     indoor_opportunity: str        # 'none' | 'moderate' | 'high'
     recommended_model: str

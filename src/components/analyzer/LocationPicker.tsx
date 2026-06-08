@@ -36,13 +36,18 @@ export function LocationPicker({
     if (!query.trim()) return;
     setGeocoding(true);
     setGeoError(null);
-    const result = await geocodeQuery(query.trim());
-    setGeocoding(false);
-    if (!result) {
-      setGeoError("No se encontró la dirección. Intenta ser más específico.");
-      return;
+    try {
+      const result = await geocodeQuery(query.trim());
+      if (!result) {
+        setGeoError("No se encontró la dirección. Intenta ser más específico.");
+        return;
+      }
+      setPin(result);
+    } catch {
+      setGeoError("Error al conectar con el servicio de búsqueda. Comprueba tu conexión.");
+    } finally {
+      setGeocoding(false);
     }
-    setPin(result);
   };
 
   return (

@@ -16,8 +16,9 @@ const SCORE_W_HAB_PER_COURT = 0.50;
 const SCORE_W_INDOOR_DEFICIT = 0.35;
 const SCORE_W_NEAREST_CLUB   = 0.15;
 
-// Factor 1 thresholds: hab/pista
+// Factor 1 thresholds: hab/pista (piecewise: 1000→0, 3800→6, 5000→10)
 const SCORE_HAB_MAX = 5000; // ratio ≥ this → score 10
+const SCORE_HAB_MID = 3800; // national avg → score 6
 const SCORE_HAB_MIN = 1000; // ratio ≤ this → score 0
 
 // Factor 2 thresholds: indoor deficit in percentage points vs national
@@ -26,7 +27,7 @@ const SCORE_INDOOR_MIN_PP = -15; // -15pp surplus → score 0
 
 // Factor 3 thresholds: distance to nearest competitor in km
 const SCORE_DIST_MAX = 5.0; // ≥ 5km → score 10
-const SCORE_DIST_MID = 2.0; // 2km → score 5
+const SCORE_DIST_MID = 2.0; // 2km → score 5 (piecewise anchor)
 const SCORE_DIST_MIN = 0.5; // ≤ 0.5km → score 0
 
 export const analyzeLocation = createServerFn({ method: "POST" })
@@ -72,12 +73,14 @@ export const analyzeLocation = createServerFn({ method: "POST" })
     const indoorDeficitPp = Math.round((NATIONAL_INDOOR_RATIO - indoorRatio) * 100);
 
     // Step 6: Opportunity score (3 factors)
-    // Factor 1: hab/pista ratio (50%)
+    // Factor 1: hab/pista ratio (50%) — piecewise: 1000→0, 3800→6, 5000→10
     const f1 = habPerCourt >= SCORE_HAB_MAX
       ? 10
       : habPerCourt <= SCORE_HAB_MIN
         ? 0
-        : ((habPerCourt - SCORE_HAB_MIN) / (SCORE_HAB_MAX - SCORE_HAB_MIN)) * 10;
+        : habPerCourt >= SCORE_HAB_MID
+          ? 6 + ((habPerCourt - SCORE_HAB_MID) / (SCORE_HAB_MAX - SCORE_HAB_MID)) * 4
+          : ((habPerCourt - SCORE_HAB_MIN) / (SCORE_HAB_MID - SCORE_HAB_MIN)) * 6;
 
     // Factor 2: indoor deficit in pp vs national (35%)
     const f2 = indoorDeficitPp >= SCORE_INDOOR_MAX_PP
@@ -86,13 +89,15 @@ export const analyzeLocation = createServerFn({ method: "POST" })
         ? 0
         : ((indoorDeficitPp - SCORE_INDOOR_MIN_PP) / (SCORE_INDOOR_MAX_PP - SCORE_INDOOR_MIN_PP)) * 10;
 
-    // Factor 3: distance to nearest competitor (15%)
+    // Factor 3: distance to nearest competitor (15%) — piecewise: 0.5→0, 2→5, 5→10
     const nearestKm = courts.length > 0 ? courts[0].distance_m / 1000 : radius;
     const f3 = nearestKm >= SCORE_DIST_MAX
       ? 10
       : nearestKm <= SCORE_DIST_MIN
         ? 0
-        : ((nearestKm - SCORE_DIST_MIN) / (SCORE_DIST_MAX - SCORE_DIST_MIN)) * 10;
+        : nearestKm >= SCORE_DIST_MID
+          ? 5 + ((nearestKm - SCORE_DIST_MID) / (SCORE_DIST_MAX - SCORE_DIST_MID)) * 5
+          : ((nearestKm - SCORE_DIST_MIN) / (SCORE_DIST_MID - SCORE_DIST_MIN)) * 5;
 
     const score = Math.round(
       (f1 * SCORE_W_HAB_PER_COURT + f2 * SCORE_W_INDOOR_DEFICIT + f3 * SCORE_W_NEAREST_CLUB) * 10
