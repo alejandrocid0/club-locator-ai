@@ -132,10 +132,6 @@ export function Report({ data }: { data: AnalysisResult }) {
                 </span>
                 <span className="text-2xl opacity-80 mb-1">/10</span>
               </div>
-              <div className="mt-3 flex items-center gap-2 text-sm opacity-90">
-                <Sparkles className="size-4" />
-                Ubicación recomendada para inversión estratégica
-              </div>
             </div>
           </Card>
           <Stat icon={TrendingUp} label="Demanda" value={data.summary.demandLevel} tone="success" />
