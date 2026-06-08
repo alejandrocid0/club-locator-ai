@@ -12,4 +12,12 @@ export default defineConfig({
     // nitro/vite builds from this
     server: { entry: "server" },
   },
+  vite: {
+    resolve: {
+      dedupe: ["react", "react-dom", "use-sync-external-store"],
+    },
+    optimizeDeps: {
+      include: ["use-sync-external-store/shim/with-selector"],
+    },
+  },
 });
