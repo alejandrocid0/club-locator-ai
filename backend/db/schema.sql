@@ -18,9 +18,6 @@ CREATE TABLE IF NOT EXISTS census_sections (
     province        TEXT NOT NULL,              -- Nombre provincia
     province_code   TEXT,                       -- Código INE provincia
     population      INTEGER DEFAULT 0,          -- Población total
-    households      INTEGER DEFAULT 0,          -- Número de hogares
-    avg_age         FLOAT,                      -- Edad media
-    avg_income      FLOAT,                      -- Renta media por hogar (€)
     area_km2        FLOAT,                      -- Área en km²
     geometry        GEOMETRY(MULTIPOLYGON, 4326),
     updated_at      TIMESTAMPTZ DEFAULT NOW()

@@ -108,19 +108,12 @@ def calculate_pricing(supply: SupplyResult, demographics: DemographicsResult) ->
     )
 
     bench = get_national_benchmarks()
-
-    # Income adjustment factor
-    income_factor = 1.0
-    if demographics.avg_income:
-        national_avg_income = 32000
-        income_factor = min(1.3, max(0.8, demographics.avg_income / national_avg_income))
-
     base_valley = market_valley or bench.avg_price_valley
     base_peak = market_peak or bench.avg_price_peak
 
     return PricingResult(
-        recommended_valley=round(base_valley * income_factor, 2),
-        recommended_peak=round(base_peak * income_factor, 2),
+        recommended_valley=round(base_valley, 2),
+        recommended_peak=round(base_peak, 2),
         market_valley_avg=round(market_valley, 2) if market_valley else None,
         market_peak_avg=round(market_peak, 2) if market_peak else None,
     )
@@ -206,8 +199,6 @@ def calculate_recommendation(
         opportunities.append("Mercado claramente infraservido vs. media nacional")
     if demographics.population > 100000:
         opportunities.append("Masa crítica de población suficiente")
-    if demographics.avg_income and demographics.avg_income > 35000:
-        opportunities.append("Renta media alta: pricing premium defendible")
 
     if ratios.saturation_level in ("high", "saturated"):
         risks.append("Alta competencia ya establecida en la zona")

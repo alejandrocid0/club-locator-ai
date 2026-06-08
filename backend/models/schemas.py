@@ -25,8 +25,6 @@ class DemographicsResult(BaseModel):
     population: int
     area_km2: float
     density: float
-    avg_income: Optional[float]
-    avg_age: Optional[float]
 
 
 class SupplyResult(BaseModel):

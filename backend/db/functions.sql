@@ -59,9 +59,7 @@ CREATE OR REPLACE FUNCTION demographics_in_radius(
 )
 RETURNS TABLE (
     population BIGINT,
-    area_km2 FLOAT,
-    avg_income FLOAT,
-    avg_age FLOAT
+    area_km2 FLOAT
 )
 LANGUAGE sql
 STABLE
@@ -76,9 +74,7 @@ AS $$
                 NULLIF(ST_Area(cs.geometry), 0)
             )
         )::BIGINT AS population,
-        SUM(cs.area_km2) AS area_km2,
-        AVG(cs.avg_income) AS avg_income,
-        AVG(cs.avg_age) AS avg_age
+        SUM(cs.area_km2) AS area_km2
     FROM census_sections cs
     WHERE ST_DWithin(
         cs.geometry::geography,
