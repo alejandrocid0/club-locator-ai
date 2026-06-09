@@ -111,15 +111,6 @@ export const analyzeLocation = createServerFn({ method: "POST" })
 
     const risk = nearestKm < 3 ? "alto" : nearestKm <= 5 ? "medio" : "bajo";
 
-    const model =
-      score >= 7 && indoorDeficitPp > 5
-        ? "Club indoor (6-8 pistas cubiertas)"
-        : score >= 7
-          ? "Club mixto (4 indoor + 4 outdoor)"
-          : score >= 5
-            ? "Club outdoor con opción de expansión indoor"
-            : "Análisis ampliado recomendado antes de invertir";
-
     const opportunities: string[] = [];
     const risks: string[] = [];
     const localIndoorPct = Math.round(indoorRatio * 100);
@@ -246,7 +237,6 @@ export const analyzeLocation = createServerFn({ method: "POST" })
       })),
       recommendation: {
         summary: `${totalCourts} pistas detectadas para ${population.toLocaleString("es-ES")} habitantes en radio de ${radius} km (${habPerCourt.toLocaleString("es-ES")} hab/pista). ${indoorDeficitPp > 5 ? `Déficit indoor de ${indoorDeficitPp}pp vs media nacional.` : "Cobertura indoor adecuada."} Competidor más cercano a ${nearestKm.toFixed(1)} km.`,
-        model,
         opportunities,
         risks,
       },

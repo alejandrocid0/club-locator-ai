@@ -6,7 +6,6 @@ import {
   TrendingUp,
   Users,
   ShieldAlert,
-  Sparkles,
   Layers,
   Gauge,
   CheckCircle2,
@@ -348,10 +347,6 @@ export function Report({ data }: { data: AnalysisResult }) {
                 <p className="text-lg leading-relaxed text-foreground">
                   {data.recommendation.summary}
                 </p>
-                <div className="mt-4 inline-flex items-center gap-2 rounded-md bg-primary px-4 py-1.5 text-sm font-bold text-primary-foreground">
-                  <Sparkles className="size-3.5" />
-                  Modelo recomendado: {data.recommendation.model}
-                </div>
               </div>
             </div>
 
