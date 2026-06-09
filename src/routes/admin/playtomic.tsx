@@ -1,14 +1,51 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { createServerFn } from "@tanstack/start";
 import { useState, useRef } from "react";
+import { getSupabaseClient } from "~/lib/supabase.server";
 
 export const Route = createFileRoute("/admin/playtomic")({
   component: AdminPlaytomic,
 });
 
-const SUPABASE_URL = "https://xoaljtqznzvlhwwnxnjv.supabase.co";
-const SUPABASE_KEY =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhvYWxqdHF6bnp2bGh3d254bmp2Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MDA0NjA5NSwiZXhwIjoyMDk1NjIyMDk1fQ.XHJxw0zMFTYmcnrQHXurv_PaXZ0YAmojB7FqFZzV-WM";
-const PROXY_URL = "https://xoaljtqznzvlhwwnxnjv.supabase.co/functions/v1/playtomic-proxy";
+const PROXY_PATH = "/functions/v1/playtomic-proxy";
+
+const fetchPlaytomicTenants = createServerFn({ method: "GET" })
+  .validator((d: { lat: number; lng: number }) => d)
+  .handler(async ({ data }) => {
+    const url = process.env["DB_URL"];
+    const key = process.env["DB_SERVICE_KEY"];
+    if (!url || !key) throw new Error("Missing DB_URL or DB_SERVICE_KEY");
+
+    const proxyUrl = `${url}${PROXY_PATH}?lat=${data.lat}&lng=${data.lng}&radius=40000`;
+    const r = await fetch(proxyUrl, {
+      headers: { apikey: key, Authorization: `Bearer ${key}` },
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    return r.json() as Promise<any[]>;
+  });
+
+const upsertCourts = createServerFn({ method: "POST" })
+  .validator((d: object[]) => d)
+  .handler(async ({ data }) => {
+    const supabase = getSupabaseClient();
+    const { error } = await supabase
+      .from("courts")
+      .upsert(data as any[], { onConflict: "playtomic_id" });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+const clearPlaytomicCourts = createServerFn({ method: "POST" })
+  .handler(async () => {
+    const supabase = getSupabaseClient();
+    const { error } = await supabase
+      .from("courts")
+      .delete()
+      .eq("source", "playtomic");
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
 
 const GRID: [number, number][] = [];
 for (let lat = 36.0; lat <= 44.0; lat += 0.5) {
@@ -19,33 +56,6 @@ for (let lat = 36.0; lat <= 44.0; lat += 0.5) {
 for (let lat = 27.5; lat <= 29.5; lat += 0.5) {
   for (let lng = -18.2; lng <= -13.0; lng += 0.7) {
     GRID.push([+lat.toFixed(2), +lng.toFixed(2)]);
-  }
-}
-
-async function fetchTenants(lat: number, lng: number) {
-  const url = `${PROXY_URL}?lat=${lat}&lng=${lng}&radius=40000`;
-  const r = await fetch(url, {
-    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
-    signal: AbortSignal.timeout(15000),
-  });
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
-  return r.json() as Promise<any[]>;
-}
-
-async function supabaseUpsert(rows: object[]) {
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/courts`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-      Prefer: "resolution=merge-duplicates",
-    },
-    body: JSON.stringify(rows),
-  });
-  if (!r.ok) {
-    const t = await r.text();
-    throw new Error(`Supabase ${r.status}: ${t.slice(0, 200)}`);
   }
 }
 
@@ -111,7 +121,7 @@ function AdminPlaytomic() {
       setProgress(Math.round((i / GRID.length) * 100));
 
       try {
-        const tenants = await fetchTenants(lat, lng);
+        const tenants = await fetchPlaytomicTenants({ data: { lat, lng } });
         let newInBatch = 0;
 
         for (const tenant of tenants) {
@@ -132,7 +142,7 @@ function AdminPlaytomic() {
         }
 
         if (rows.length >= BATCH) {
-          await supabaseUpsert(rows);
+          await upsertCourts({ data: rows });
           inserted += rows.length;
           rows = [];
           setStats({ clubs, courts, indoor, inserted });
@@ -145,7 +155,7 @@ function AdminPlaytomic() {
     }
 
     if (rows.length > 0) {
-      await supabaseUpsert(rows);
+      await upsertCourts({ data: rows });
       inserted += rows.length;
     }
 
@@ -158,11 +168,12 @@ function AdminPlaytomic() {
 
   async function runClear() {
     if (!confirm("¿Borrar todos los datos de Playtomic de la tabla courts?")) return;
-    const r = await fetch(`${SUPABASE_URL}/rest/v1/courts?source=eq.playtomic`, {
-      method: "DELETE",
-      headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
-    });
-    addLog(r.ok ? "✅ Datos Playtomic eliminados" : `❌ Error: ${r.status}`, r.ok ? "ok" : "err");
+    try {
+      await clearPlaytomicCourts();
+      addLog("✅ Datos Playtomic eliminados", "ok");
+    } catch (e: any) {
+      addLog(`❌ Error: ${e.message}`, "err");
+    }
   }
 
   const colorClass = { info: "text-blue-400", ok: "text-green-400", warn: "text-yellow-400", err: "text-red-400" };
