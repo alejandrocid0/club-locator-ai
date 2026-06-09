@@ -5,10 +5,6 @@ import { getCourtsInRadius } from "./courts.server";
 import { getNationalBenchmarks } from "./benchmarks.server";
 import { getSupabaseClient } from "@/lib/supabase.server";
 
-// Population density fallback (hab/km²) used only when INE census data is not
-// available for the queried area. Not a national benchmark, kept local.
-const SPAIN_AVG_DENSITY = 93;
-
 // Score weights
 const SCORE_W_HAB_PER_COURT = 0.50;
 const SCORE_W_INDOOR_DEFICIT = 0.35;
@@ -246,26 +242,17 @@ export const analyzeLocation = createServerFn({ method: "POST" })
 export type AnalysisResult = Awaited<ReturnType<typeof analyzeLocation>>;
 
 async function getPopulation(lat: number, lng: number, radiusKm: number): Promise<number> {
-  try {
-    const supabase = getSupabaseClient();
-    const radiusM = radiusKm * 1000;
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase.rpc("demographics_in_radius", {
+    center_lat: lat,
+    center_lng: lng,
+    radius_meters: radiusKm * 1000,
+  });
 
-    const { data } = await supabase.rpc("demographics_in_radius", {
-      center_lat: lat,
-      center_lng: lng,
-      radius_meters: radiusM,
-    });
+  if (error) throw new Error(`Error consultando datos del INE: ${error.message}`);
+  if (!data?.[0]?.population) throw new Error("No se encontraron datos de población del INE para esta ubicación.");
 
-    if (data && data[0]?.population) {
-      return data[0].population;
-    }
-  } catch {
-    // Fall through to estimate
-  }
-
-  // Fallback estimate until INE data is loaded
-  const area = Math.round(Math.PI * radiusKm ** 2);
-  return Math.round(area * SPAIN_AVG_DENSITY);
+  return data[0].population;
 }
 
 async function saveAnalysis(
