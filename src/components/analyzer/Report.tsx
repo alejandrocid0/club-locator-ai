@@ -138,13 +138,6 @@ export function Report({ data }: { data: AnalysisResult }) {
             icon={TrendingUp}
             label="Demanda"
             value={data.summary.demandLevel}
-            tone={
-              data.summary.demandLevel === "Muy alta" || data.summary.demandLevel === "Alta"
-                ? "success"
-                : data.summary.demandLevel === "Media"
-                  ? "warning"
-                  : "danger"
-            }
           />
           <Stat
             icon={ShieldAlert}
