@@ -3,7 +3,7 @@ import { useState } from "react";
 import { LocationPicker } from "@/components/analyzer/LocationPicker";
 import { Report } from "@/components/analyzer/Report";
 import { analyzeLocation } from "@/lib/api/analyze.functions";
-import { generateMockAnalysis, type AnalysisResult } from "@/lib/mock-analysis";
+import type { AnalysisResult } from "@/lib/api/analyze.functions";
 import logo from "@/assets/padelrenting-logo.png";
 
 export const Route = createFileRoute("/")({
@@ -32,10 +32,9 @@ function Index() {
 
     try {
       const data = await analyzeLocation({ data: { query, radius, lat, lng } });
-      setResult(data as AnalysisResult);
-    } catch (err) {
-      console.warn("Backend not available, using mock data:", err);
-      setResult(generateMockAnalysis(query, radius));
+      setResult(data);
+    } catch {
+      setError("No se pudo completar el análisis. Comprueba tu conexión e inténtalo de nuevo.");
     } finally {
       setLoading(false);
     }

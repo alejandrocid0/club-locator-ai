@@ -206,6 +206,8 @@ export const analyzeLocation = createServerFn({ method: "POST" })
     };
   });
 
+export type AnalysisResult = Awaited<ReturnType<typeof analyzeLocation>>;
+
 async function getPopulation(lat: number, lng: number, radiusKm: number): Promise<number> {
   try {
     const supabase = getSupabaseClient();

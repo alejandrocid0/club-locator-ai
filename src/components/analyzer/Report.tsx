@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import type { AnalysisResult } from "@/lib/mock-analysis";
+import type { AnalysisResult } from "@/lib/api/analyze.functions";
 
 const CompetitionMap = lazy(() => import("./CompetitionMap"));
 import {
