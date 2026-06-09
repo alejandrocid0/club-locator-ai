@@ -10,7 +10,7 @@ export const Route = createFileRoute("/admin/playtomic")({
 const PROXY_PATH = "/functions/v1/playtomic-proxy";
 
 const fetchPlaytomicTenants = createServerFn({ method: "GET" })
-  .validator((d: { lat: number; lng: number }) => d)
+  .inputValidator((d: { lat: number; lng: number }) => d)
   .handler(async ({ data }) => {
     const url = process.env["DB_URL"];
     const key = process.env["DB_SERVICE_KEY"];
@@ -26,7 +26,7 @@ const fetchPlaytomicTenants = createServerFn({ method: "GET" })
   });
 
 const upsertCourts = createServerFn({ method: "POST" })
-  .validator((d: object[]) => d)
+  .inputValidator((d: object[]) => d)
   .handler(async ({ data }) => {
     const supabase = getSupabaseClient();
     const { error } = await supabase
