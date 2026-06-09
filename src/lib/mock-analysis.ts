@@ -36,7 +36,7 @@ export function generateMockAnalysis(query: string, radius: number) {
               ? "Baja"
               : "Muy baja",
       indoorDeficit: Math.round(rand(35, 78, 6)),
-      competitiveRisk: clubs > 15 ? "medio" : "bajo",
+      competitiveRisk: rand(0.5, 8, 7) < 3 ? "alto" : rand(0.5, 8, 7) <= 5 ? "medio" : "bajo",
     },
     demographics: {
       population,

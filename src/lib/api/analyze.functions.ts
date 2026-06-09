@@ -109,11 +109,7 @@ export const analyzeLocation = createServerFn({ method: "POST" })
       (f1 * SCORE_W_HAB_PER_COURT + f2 * SCORE_W_INDOOR_DEFICIT + f3 * SCORE_W_NEAREST_CLUB) * 10
     ) / 10;
 
-    const risk = habPerCourt < bench.inhabitantsPerCourt * 0.7
-      ? "alto"
-      : habPerCourt < bench.inhabitantsPerCourt * 1.2
-        ? "medio"
-        : "bajo";
+    const risk = nearestKm < 3 ? "alto" : nearestKm <= 5 ? "medio" : "bajo";
 
     const model =
       score >= 7 && indoorDeficitPp > 5

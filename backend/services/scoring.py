@@ -172,10 +172,10 @@ def calculate_recommendation(
     else:
         indoor_opportunity = "none"
 
-    # Risk level
-    if hab_per_court < bench.inhabitants_per_court * 0.7:
+    # Risk level: distance to nearest competitor
+    if nearest_km < 3.0:
         risk = "high"
-    elif hab_per_court < bench.inhabitants_per_court * 1.2:
+    elif nearest_km <= 5.0:
         risk = "medium"
     else:
         risk = "low"
