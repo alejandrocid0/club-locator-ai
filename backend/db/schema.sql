@@ -33,8 +33,10 @@ CREATE INDEX IF NOT EXISTS idx_census_municipality
     ON census_sections(municipality_code);
 
 -- ============================================================
--- TABLA: clubs
--- Base nacional de clubes de pádel
+-- TABLA: clubs  [OBSOLETA]
+-- Diseño original (un registro por club con pricing). Reemplazada por la tabla
+-- `courts` (migración 001), que es la que usa el pipeline real. Se mantiene aquí
+-- solo como referencia histórica; no la consulta ninguna parte activa del código.
 -- ============================================================
 CREATE TABLE IF NOT EXISTS clubs (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),

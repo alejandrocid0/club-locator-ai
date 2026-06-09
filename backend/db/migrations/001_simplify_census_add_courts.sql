@@ -7,18 +7,20 @@ ALTER TABLE census_sections DROP COLUMN IF EXISTS avg_income;
 ALTER TABLE census_sections DROP COLUMN IF EXISTS avg_age;
 ALTER TABLE census_sections DROP COLUMN IF EXISTS households;
 
--- 2. Nueva tabla courts (pistas individuales de pádel)
+-- 2. Nueva tabla courts (una fila por pista individual de pádel)
 CREATE TABLE IF NOT EXISTS courts (
-    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    osm_id      TEXT UNIQUE,
-    name        TEXT,
-    lat         FLOAT NOT NULL,
-    lng         FLOAT NOT NULL,
-    location    GEOMETRY(POINT, 4326),
-    is_indoor   BOOLEAN DEFAULT false,
-    source      TEXT DEFAULT 'osm',
-    verified    BOOLEAN DEFAULT false,
-    created_at  TIMESTAMPTZ DEFAULT NOW()
+    id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    osm_id        TEXT UNIQUE,
+    playtomic_id  TEXT UNIQUE,                -- ID de la pista en Playtomic (tenant_id + índice)
+    club_name     TEXT,                       -- Nombre del club al que pertenece la pista
+    name          TEXT,                       -- Nombre de la pista (ej: "Pista 1")
+    lat           FLOAT NOT NULL,
+    lng           FLOAT NOT NULL,
+    location      GEOMETRY(POINT, 4326),
+    is_indoor     BOOLEAN DEFAULT false,
+    source        TEXT DEFAULT 'osm',         -- 'osm' | 'playtomic'
+    verified      BOOLEAN DEFAULT false,
+    created_at    TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_courts_location ON courts USING GIST(location);
@@ -36,35 +38,43 @@ CREATE TRIGGER trigger_sync_court_location
     BEFORE INSERT OR UPDATE ON courts
     FOR EACH ROW EXECUTE FUNCTION sync_court_location();
 
--- 3. Función PostGIS: pistas en radio
+-- 3. Función PostGIS: clubes en radio (agrega las pistas por club)
+-- Refleja el contrato verificado en producción: una fila por club, con el nº de
+-- pistas (court_count) agregado. is_indoor se agrega con bool_or (el club cuenta
+-- como indoor si tiene al menos una pista cubierta).
 CREATE OR REPLACE FUNCTION courts_in_radius(
     center_lat FLOAT,
     center_lng FLOAT,
     radius_meters FLOAT
 )
 RETURNS TABLE (
-    id          UUID,
-    name        TEXT,
+    club_name   TEXT,
     is_indoor   BOOLEAN,
-    distance_m  FLOAT
+    distance_m  FLOAT,
+    court_count BIGINT,
+    lat         FLOAT,
+    lng         FLOAT
 )
 LANGUAGE sql
 STABLE
 AS $$
     SELECT
-        c.id,
-        c.name,
-        c.is_indoor,
+        c.club_name,
+        bool_or(c.is_indoor) AS is_indoor,
         ST_Distance(
             c.location::geography,
             ST_SetSRID(ST_MakePoint(center_lng, center_lat), 4326)::geography
-        ) AS distance_m
+        ) AS distance_m,
+        COUNT(*) AS court_count,
+        c.lat,
+        c.lng
     FROM courts c
     WHERE ST_DWithin(
         c.location::geography,
         ST_SetSRID(ST_MakePoint(center_lng, center_lat), 4326)::geography,
         radius_meters
     )
+    GROUP BY c.club_name, c.lat, c.lng
     ORDER BY distance_m ASC;
 $$;
 
