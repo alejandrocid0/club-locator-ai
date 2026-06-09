@@ -2,13 +2,11 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { geocode } from "./geocoding.server";
 import { getCourtsInRadius } from "./courts.server";
+import { getNationalBenchmarks } from "./benchmarks.server";
 import { getSupabaseClient } from "@/lib/supabase.server";
 
-const NATIONAL_INHABITANTS_PER_COURT = 3800;
-const NATIONAL_INHABITANTS_PER_INDOOR = 18000;
-const NATIONAL_INDOOR_RATIO = 0.21;
-const NATIONAL_AVG_VALLEY = 8.5;
-const NATIONAL_AVG_PEAK = 14.0;
+// Population density fallback (hab/km²) used only when INE census data is not
+// available for the queried area. Not a national benchmark, kept local.
 const SPAIN_AVG_DENSITY = 93;
 
 // Score weights
@@ -16,9 +14,9 @@ const SCORE_W_HAB_PER_COURT = 0.50;
 const SCORE_W_INDOOR_DEFICIT = 0.35;
 const SCORE_W_NEAREST_CLUB   = 0.15;
 
-// Factor 1 thresholds: hab/pista (piecewise: 1000→0, 3800→6, 5000→10)
+// Factor 1 thresholds: hab/pista (piecewise: MIN→0, national avg→6, MAX→10).
+// The neutral mid-point (score 6) is the national average, read from the DB.
 const SCORE_HAB_MAX = 5000; // ratio ≥ this → score 10
-const SCORE_HAB_MID = 3800; // national avg → score 6
 const SCORE_HAB_MIN = 1000; // ratio ≤ this → score 0
 
 // Factor 2 thresholds: indoor deficit in percentage points vs national
@@ -42,6 +40,14 @@ export const analyzeLocation = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { query, radius } = data;
 
+    // National benchmarks (editable from the `benchmarks` DB table)
+    const bench = await getNationalBenchmarks();
+    // Factor 1 neutral point = national average, clamped inside (MIN, MAX)
+    const habMid = Math.min(
+      SCORE_HAB_MAX - 1,
+      Math.max(SCORE_HAB_MIN + 1, bench.inhabitantsPerCourt),
+    );
+
     // Step 1: Use provided coords (from map pin) or geocode as fallback
     const { lat, lng, address } =
       data.lat && data.lng
@@ -64,23 +70,23 @@ export const analyzeLocation = createServerFn({ method: "POST" })
     const habPerCourt = totalCourts > 0 ? Math.round(population / totalCourts) : population;
     const habPerIndoor = indoorCourts > 0 ? Math.round(population / indoorCourts) : null;
     const habPerOutdoor = outdoorCourts > 0 ? Math.round(population / outdoorCourts) : null;
-    const saturationRatio = totalCourts > 0 ? habPerCourt / NATIONAL_INHABITANTS_PER_COURT : 999;
+    const saturationRatio = totalCourts > 0 ? habPerCourt / bench.inhabitantsPerCourt : 999;
     const saturation =
       saturationRatio > 2.0 ? "baja"
         : saturationRatio > 1.2 ? "media"
         : saturationRatio > 0.7 ? "alta"
         : "saturada";
-    const indoorDeficitPp = Math.round((NATIONAL_INDOOR_RATIO - indoorRatio) * 100);
+    const indoorDeficitPp = Math.round((bench.indoorRatio - indoorRatio) * 100);
 
     // Step 6: Opportunity score (3 factors)
-    // Factor 1: hab/pista ratio (50%) — piecewise: 1000→0, 3800→6, 5000→10
+    // Factor 1: hab/pista ratio (50%) — piecewise: MIN→0, national avg→6, MAX→10
     const f1 = habPerCourt >= SCORE_HAB_MAX
       ? 10
       : habPerCourt <= SCORE_HAB_MIN
         ? 0
-        : habPerCourt >= SCORE_HAB_MID
-          ? 6 + ((habPerCourt - SCORE_HAB_MID) / (SCORE_HAB_MAX - SCORE_HAB_MID)) * 4
-          : ((habPerCourt - SCORE_HAB_MIN) / (SCORE_HAB_MID - SCORE_HAB_MIN)) * 6;
+        : habPerCourt >= habMid
+          ? 6 + ((habPerCourt - habMid) / (SCORE_HAB_MAX - habMid)) * 4
+          : ((habPerCourt - SCORE_HAB_MIN) / (habMid - SCORE_HAB_MIN)) * 6;
 
     // Factor 2: indoor deficit in pp vs national (35%)
     const f2 = indoorDeficitPp >= SCORE_INDOOR_MAX_PP
@@ -103,11 +109,7 @@ export const analyzeLocation = createServerFn({ method: "POST" })
       (f1 * SCORE_W_HAB_PER_COURT + f2 * SCORE_W_INDOOR_DEFICIT + f3 * SCORE_W_NEAREST_CLUB) * 10
     ) / 10;
 
-    const risk = habPerCourt < NATIONAL_INHABITANTS_PER_COURT * 0.7
-      ? "alto"
-      : habPerCourt < NATIONAL_INHABITANTS_PER_COURT * 1.2
-        ? "medio"
-        : "bajo";
+    const risk = nearestKm < 3 ? "alto" : nearestKm <= 5 ? "medio" : "bajo";
 
     const model =
       score >= 7 && indoorDeficitPp > 5
@@ -120,14 +122,69 @@ export const analyzeLocation = createServerFn({ method: "POST" })
 
     const opportunities: string[] = [];
     const risks: string[] = [];
-    if (indoorDeficitPp > 5) opportunities.push("Déficit de pistas indoor en la zona");
-    if (habPerCourt > NATIONAL_INHABITANTS_PER_COURT * 1.5)
-      opportunities.push("Mercado infraservido vs. media nacional");
-    if (nearestKm > 3) opportunities.push(`Competidor más cercano a ${nearestKm.toFixed(1)} km`);
-    if (habPerCourt < NATIONAL_INHABITANTS_PER_COURT)
-      risks.push("Ratio hab/pista por debajo de la media nacional");
-    if (totalCourts > 20) risks.push(`Alta densidad de pistas: ${totalCourts} en el radio`);
-    if (nearestKm < 1) risks.push(`Competidor directo a ${nearestKm.toFixed(1)} km del punto`);
+    const localIndoorPct = Math.round(indoorRatio * 100);
+    const nationalIndoorPct = Math.round(bench.indoorRatio * 100);
+    const fmt = (n: number) => n.toLocaleString("es-ES");
+
+    // O1 — Mercado infraservido
+    if (habPerCourt > bench.inhabitantsPerCourt * 1.2) {
+      const pct = Math.round((habPerCourt / bench.inhabitantsPerCourt - 1) * 100);
+      opportunities.push(`La zona tiene ${fmt(habPerCourt)} hab/pista, un ${pct}% por encima de la media nacional (${fmt(bench.inhabitantsPerCourt)}). Existe demanda real no cubierta por la oferta actual.`);
+    }
+
+    // O2 — Déficit indoor concreto
+    if (indoorDeficitPp > 5) {
+      opportunities.push(`Solo el ${localIndoorPct}% de las pistas son indoor, frente al ${nationalIndoorPct}% de media en España — un déficit de ${indoorDeficitPp} puntos porcentuales. Hueco claro para un club cubierto.`);
+    }
+
+    // O3 — Sin competencia en el entorno inmediato
+    if (nearestKm > 3) {
+      opportunities.push(`El club más cercano está a ${nearestKm.toFixed(1)} km. El radio de captación no tiene competencia directa en el entorno inmediato.`);
+    }
+
+    // O4 — Mercado de gran volumen
+    if (population > 100000) {
+      opportunities.push(`${fmt(population)} habitantes en un radio de ${radius} km. Masa crítica suficiente para sostener distintos formatos y segmentos de cliente.`);
+    }
+
+    // O5 — Escasez absoluta de pistas
+    if (totalCourts < 10 && population > 50000) {
+      opportunities.push(`Solo ${totalCourts} pistas detectadas para ${fmt(population)} habitantes. La oferta es escasa en términos absolutos, no solo relativa a la media.`);
+    }
+
+    if (opportunities.length === 0) {
+      opportunities.push("No se identifican ventajas estructurales destacadas en esta ubicación con los datos disponibles.");
+    }
+
+    // R1 — Zona saturada
+    if (habPerCourt < bench.inhabitantsPerCourt * 0.8) {
+      const pct = Math.round((1 - habPerCourt / bench.inhabitantsPerCourt) * 100);
+      risks.push(`La zona tiene ${fmt(habPerCourt)} hab/pista, un ${pct}% por debajo de la media nacional. Alta densidad de oferta respecto a la demanda potencial.`);
+    }
+
+    // R2 — Competidor muy cercano
+    if (nearestKm < 3) {
+      risks.push(`Hay un club a ${nearestKm.toFixed(1)} km del punto analizado. La zona de captación se solapa directamente con oferta ya establecida.`);
+    }
+
+    // R3 — Indoor ya cubierto
+    if (indoorDeficitPp < -5) {
+      risks.push(`El ${localIndoorPct}% de las pistas son indoor, ${Math.abs(indoorDeficitPp)}pp por encima de la media nacional. El formato cubierto no es un diferenciador en esta zona.`);
+    }
+
+    // R4 — Mercado pequeño
+    if (population < 50000) {
+      risks.push(`El radio de ${radius} km concentra ${fmt(population)} habitantes. Mercado potencial limitado para un club de tamaño estándar.`);
+    }
+
+    // R5 — Alta concentración de clubes
+    if (courts.length > 8) {
+      risks.push(`${courts.length} clubes activos en el radio de ${radius} km. Entorno altamente competitivo con múltiples alternativas ya consolidadas.`);
+    }
+
+    if (risks.length === 0) {
+      risks.push("No se identifican factores de riesgo significativos en esta ubicación.");
+    }
 
     saveAnalysis(query, radius, lat, lng, address).catch(() => {});
 
@@ -138,7 +195,15 @@ export const analyzeLocation = createServerFn({ method: "POST" })
       addressResolved: address,
       summary: {
         opportunityScore: score,
-        demandLevel: score >= 7 ? "Muy alta" : score >= 5 ? "Alta" : "Media",
+        demandLevel: habPerCourt >= 6000
+          ? "Muy alta"
+          : habPerCourt >= bench.inhabitantsPerCourt
+            ? "Alta"
+            : habPerCourt >= 2500
+              ? "Media"
+              : habPerCourt >= 1500
+                ? "Baja"
+                : "Muy baja",
         indoorDeficit: Math.max(0, indoorDeficitPp),
         competitiveRisk: risk,
       },
@@ -159,16 +224,16 @@ export const analyzeLocation = createServerFn({ method: "POST" })
         outdoorRatio: Math.round((1 - indoorRatio) * 100),
         saturation,
         spain: {
-          habPerCourt: NATIONAL_INHABITANTS_PER_COURT,
-          habPerIndoor: NATIONAL_INHABITANTS_PER_INDOOR,
-          habPerOutdoor: Math.round(NATIONAL_INHABITANTS_PER_COURT / (1 - NATIONAL_INDOOR_RATIO)),
-          indoorRatio: Math.round(NATIONAL_INDOOR_RATIO * 100),
-          outdoorRatio: Math.round((1 - NATIONAL_INDOOR_RATIO) * 100),
+          habPerCourt: bench.inhabitantsPerCourt,
+          habPerIndoor: bench.inhabitantsPerIndoor,
+          habPerOutdoor: Math.round(bench.inhabitantsPerCourt / (1 - bench.indoorRatio)),
+          indoorRatio: Math.round(bench.indoorRatio * 100),
+          outdoorRatio: Math.round((1 - bench.indoorRatio) * 100),
         },
       },
       pricing: {
-        valle: NATIONAL_AVG_VALLEY,
-        punta: NATIONAL_AVG_PEAK,
+        valle: bench.avgPriceValley,
+        punta: bench.avgPricePeak,
       },
       clubsNearby: courts.map((c, i) => ({
         id: i,
@@ -178,14 +243,6 @@ export const analyzeLocation = createServerFn({ method: "POST" })
         distance_km: Math.round(c.distance_m / 100) / 10,
         lat: c.lat,
         lng: c.lng,
-        offset: {
-          x:
-            Math.cos((i / Math.max(courts.length, 1)) * 2 * Math.PI) *
-            (c.distance_m / 1000 / radius),
-          y:
-            Math.sin((i / Math.max(courts.length, 1)) * 2 * Math.PI) *
-            (c.distance_m / 1000 / radius),
-        },
       })),
       recommendation: {
         summary: `${totalCourts} pistas detectadas para ${population.toLocaleString("es-ES")} habitantes en radio de ${radius} km (${habPerCourt.toLocaleString("es-ES")} hab/pista). ${indoorDeficitPp > 5 ? `Déficit indoor de ${indoorDeficitPp}pp vs media nacional.` : "Cobertura indoor adecuada."} Competidor más cercano a ${nearestKm.toFixed(1)} km.`,
@@ -195,6 +252,8 @@ export const analyzeLocation = createServerFn({ method: "POST" })
       },
     };
   });
+
+export type AnalysisResult = Awaited<ReturnType<typeof analyzeLocation>>;
 
 async function getPopulation(lat: number, lng: number, radiusKm: number): Promise<number> {
   try {

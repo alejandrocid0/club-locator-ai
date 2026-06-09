@@ -18,9 +18,6 @@ CREATE TABLE IF NOT EXISTS census_sections (
     province        TEXT NOT NULL,              -- Nombre provincia
     province_code   TEXT,                       -- Código INE provincia
     population      INTEGER DEFAULT 0,          -- Población total
-    households      INTEGER DEFAULT 0,          -- Número de hogares
-    avg_age         FLOAT,                      -- Edad media
-    avg_income      FLOAT,                      -- Renta media por hogar (€)
     area_km2        FLOAT,                      -- Área en km²
     geometry        GEOMETRY(MULTIPOLYGON, 4326),
     updated_at      TIMESTAMPTZ DEFAULT NOW()
@@ -36,8 +33,10 @@ CREATE INDEX IF NOT EXISTS idx_census_municipality
     ON census_sections(municipality_code);
 
 -- ============================================================
--- TABLA: clubs
--- Base nacional de clubes de pádel
+-- TABLA: clubs  [OBSOLETA]
+-- Diseño original (un registro por club con pricing). Reemplazada por la tabla
+-- `courts` (migración 001), que es la que usa el pipeline real. Se mantiene aquí
+-- solo como referencia histórica; no la consulta ninguna parte activa del código.
 -- ============================================================
 CREATE TABLE IF NOT EXISTS clubs (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),

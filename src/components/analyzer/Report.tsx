@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import type { AnalysisResult } from "@/lib/mock-analysis";
+import type { AnalysisResult } from "@/lib/api/analyze.functions";
 
 const CompetitionMap = lazy(() => import("./CompetitionMap"));
 import {
@@ -108,13 +108,6 @@ export function Report({ data }: { data: AnalysisResult }) {
     },
   ];
 
-  const scoreTone =
-    data.summary.opportunityScore >= 8
-      ? "success"
-      : data.summary.opportunityScore >= 6.5
-        ? "warning"
-        : "danger";
-
   return (
     <div className="space-y-12">
       {/* 1. Resumen ejecutivo */}
@@ -132,13 +125,13 @@ export function Report({ data }: { data: AnalysisResult }) {
                 </span>
                 <span className="text-2xl opacity-80 mb-1">/10</span>
               </div>
-              <div className="mt-3 flex items-center gap-2 text-sm opacity-90">
-                <Sparkles className="size-4" />
-                Ubicación recomendada para inversión estratégica
-              </div>
             </div>
           </Card>
-          <Stat icon={TrendingUp} label="Demanda" value={data.summary.demandLevel} tone="success" />
+          <Stat
+            icon={TrendingUp}
+            label="Demanda"
+            value={data.summary.demandLevel}
+          />
           <Stat
             icon={ShieldAlert}
             label="Riesgo competitivo"

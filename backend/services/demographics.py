@@ -22,9 +22,7 @@ def get_demographics(lat: float, lng: float, radius_km: float) -> DemographicsRe
                     ST_Area(cs.geometry)
                 )
             )::INTEGER AS population,
-            SUM(cs.area_km2) AS area_km2,
-            AVG(cs.avg_income) AS avg_income,
-            AVG(cs.avg_age) AS avg_age
+            SUM(cs.area_km2) AS area_km2
         FROM census_sections cs
         WHERE ST_DWithin(
             cs.geometry::geography,
@@ -35,7 +33,6 @@ def get_demographics(lat: float, lng: float, radius_km: float) -> DemographicsRe
 
     result = client.rpc("run_sql", {"query": sql}).execute()
 
-    # If we have census data, use it
     if result.data and result.data[0].get("population"):
         row = result.data[0]
         population = row["population"] or 0
@@ -44,17 +41,12 @@ def get_demographics(lat: float, lng: float, radius_km: float) -> DemographicsRe
             population=population,
             area_km2=round(area, 2),
             density=round(population / area, 1) if area > 0 else 0,
-            avg_income=row.get("avg_income"),
-            avg_age=row.get("avg_age"),
         )
 
     # Fallback: estimate based on radius area and Spanish average density (~93 hab/km²)
     area = round(3.14159 * radius_km ** 2, 2)
-    estimated_population = int(area * 93)
     return DemographicsResult(
-        population=estimated_population,
+        population=int(area * 93),
         area_km2=area,
         density=93.0,
-        avg_income=None,
-        avg_age=None,
     )
