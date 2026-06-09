@@ -108,13 +108,6 @@ export function Report({ data }: { data: AnalysisResult }) {
     },
   ];
 
-  const scoreTone =
-    data.summary.opportunityScore >= 8
-      ? "success"
-      : data.summary.opportunityScore >= 6.5
-        ? "warning"
-        : "danger";
-
   return (
     <div className="space-y-12">
       {/* 1. Resumen ejecutivo */}

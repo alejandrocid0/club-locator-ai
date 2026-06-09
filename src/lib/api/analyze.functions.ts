@@ -243,14 +243,6 @@ export const analyzeLocation = createServerFn({ method: "POST" })
         distance_km: Math.round(c.distance_m / 100) / 10,
         lat: c.lat,
         lng: c.lng,
-        offset: {
-          x:
-            Math.cos((i / Math.max(courts.length, 1)) * 2 * Math.PI) *
-            (c.distance_m / 1000 / radius),
-          y:
-            Math.sin((i / Math.max(courts.length, 1)) * 2 * Math.PI) *
-            (c.distance_m / 1000 / radius),
-        },
       })),
       recommendation: {
         summary: `${totalCourts} pistas detectadas para ${population.toLocaleString("es-ES")} habitantes en radio de ${radius} km (${habPerCourt.toLocaleString("es-ES")} hab/pista). ${indoorDeficitPp > 5 ? `Déficit indoor de ${indoorDeficitPp}pp vs media nacional.` : "Cobertura indoor adecuada."} Competidor más cercano a ${nearestKm.toFixed(1)} km.`,
