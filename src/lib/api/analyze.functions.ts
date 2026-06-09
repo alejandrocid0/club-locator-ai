@@ -122,14 +122,69 @@ export const analyzeLocation = createServerFn({ method: "POST" })
 
     const opportunities: string[] = [];
     const risks: string[] = [];
-    if (indoorDeficitPp > 5) opportunities.push("Déficit de pistas indoor en la zona");
-    if (habPerCourt > bench.inhabitantsPerCourt * 1.5)
-      opportunities.push("Mercado infraservido vs. media nacional");
-    if (nearestKm > 3) opportunities.push(`Competidor más cercano a ${nearestKm.toFixed(1)} km`);
-    if (habPerCourt < bench.inhabitantsPerCourt)
-      risks.push("Ratio hab/pista por debajo de la media nacional");
-    if (totalCourts > 20) risks.push(`Alta densidad de pistas: ${totalCourts} en el radio`);
-    if (nearestKm < 1) risks.push(`Competidor directo a ${nearestKm.toFixed(1)} km del punto`);
+    const localIndoorPct = Math.round(indoorRatio * 100);
+    const nationalIndoorPct = Math.round(bench.indoorRatio * 100);
+    const fmt = (n: number) => n.toLocaleString("es-ES");
+
+    // O1 — Mercado infraservido
+    if (habPerCourt > bench.inhabitantsPerCourt * 1.2) {
+      const pct = Math.round((habPerCourt / bench.inhabitantsPerCourt - 1) * 100);
+      opportunities.push(`La zona tiene ${fmt(habPerCourt)} hab/pista, un ${pct}% por encima de la media nacional (${fmt(bench.inhabitantsPerCourt)}). Existe demanda real no cubierta por la oferta actual.`);
+    }
+
+    // O2 — Déficit indoor concreto
+    if (indoorDeficitPp > 5) {
+      opportunities.push(`Solo el ${localIndoorPct}% de las pistas son indoor, frente al ${nationalIndoorPct}% de media en España — un déficit de ${indoorDeficitPp} puntos porcentuales. Hueco claro para un club cubierto.`);
+    }
+
+    // O3 — Sin competencia en el entorno inmediato
+    if (nearestKm > 3) {
+      opportunities.push(`El club más cercano está a ${nearestKm.toFixed(1)} km. El radio de captación no tiene competencia directa en el entorno inmediato.`);
+    }
+
+    // O4 — Mercado de gran volumen
+    if (population > 100000) {
+      opportunities.push(`${fmt(population)} habitantes en un radio de ${radius} km. Masa crítica suficiente para sostener distintos formatos y segmentos de cliente.`);
+    }
+
+    // O5 — Escasez absoluta de pistas
+    if (totalCourts < 10 && population > 50000) {
+      opportunities.push(`Solo ${totalCourts} pistas detectadas para ${fmt(population)} habitantes. La oferta es escasa en términos absolutos, no solo relativa a la media.`);
+    }
+
+    if (opportunities.length === 0) {
+      opportunities.push("No se identifican ventajas estructurales destacadas en esta ubicación con los datos disponibles.");
+    }
+
+    // R1 — Zona saturada
+    if (habPerCourt < bench.inhabitantsPerCourt * 0.8) {
+      const pct = Math.round((1 - habPerCourt / bench.inhabitantsPerCourt) * 100);
+      risks.push(`La zona tiene ${fmt(habPerCourt)} hab/pista, un ${pct}% por debajo de la media nacional. Alta densidad de oferta respecto a la demanda potencial.`);
+    }
+
+    // R2 — Competidor muy cercano
+    if (nearestKm < 3) {
+      risks.push(`Hay un club a ${nearestKm.toFixed(1)} km del punto analizado. La zona de captación se solapa directamente con oferta ya establecida.`);
+    }
+
+    // R3 — Indoor ya cubierto
+    if (indoorDeficitPp < -5) {
+      risks.push(`El ${localIndoorPct}% de las pistas son indoor, ${Math.abs(indoorDeficitPp)}pp por encima de la media nacional. El formato cubierto no es un diferenciador en esta zona.`);
+    }
+
+    // R4 — Mercado pequeño
+    if (population < 50000) {
+      risks.push(`El radio de ${radius} km concentra ${fmt(population)} habitantes. Mercado potencial limitado para un club de tamaño estándar.`);
+    }
+
+    // R5 — Alta concentración de clubes
+    if (courts.length > 8) {
+      risks.push(`${courts.length} clubes activos en el radio de ${radius} km. Entorno altamente competitivo con múltiples alternativas ya consolidadas.`);
+    }
+
+    if (risks.length === 0) {
+      risks.push("No se identifican factores de riesgo significativos en esta ubicación.");
+    }
 
     saveAnalysis(query, radius, lat, lng, address).catch(() => {});
 

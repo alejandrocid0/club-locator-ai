@@ -192,20 +192,91 @@ def calculate_recommendation(
 
     opportunities = []
     risks = []
+    local_indoor_pct = round(indoor_ratio * 100)
+    national_indoor_pct = round(bench.indoor_ratio * 100)
+    pop = demographics.population
+    radius_km = demographics.area_km2 ** 0.5  # approximate for summary text
 
-    if ratios.indoor_deficit:
-        opportunities.append("Déficit de pistas indoor en la zona")
-    if ratios.inhabitants_per_court > bench.inhabitants_per_court * 1.5:
-        opportunities.append("Mercado claramente infraservido vs. media nacional")
-    if demographics.population > 100000:
-        opportunities.append("Masa crítica de población suficiente")
+    # O1 — Mercado infraservido
+    if hab_per_court > bench.inhabitants_per_court * 1.2:
+        pct = round((hab_per_court / bench.inhabitants_per_court - 1) * 100)
+        opportunities.append(
+            f"La zona tiene {hab_per_court:,.0f} hab/pista, un {pct}% por encima de la media nacional "
+            f"({bench.inhabitants_per_court:,.0f}). Existe demanda real no cubierta por la oferta actual."
+        )
 
-    if ratios.saturation_level in ("high", "saturated"):
-        risks.append("Alta competencia ya establecida en la zona")
-    if supply.total_clubs > 5:
-        risks.append(f"Mercado con {supply.total_clubs} clubes activos en el radio")
-    if demographics.population < 30000:
-        risks.append("Masa crítica de población limitada")
+    # O2 — Déficit indoor concreto
+    if indoor_deficit_pp > 5:
+        opportunities.append(
+            f"Solo el {local_indoor_pct}% de las pistas son indoor, frente al {national_indoor_pct}% "
+            f"de media en España — un déficit de {indoor_deficit_pp:.0f} puntos porcentuales. "
+            f"Hueco claro para un club cubierto."
+        )
+
+    # O3 — Sin competencia en el entorno inmediato
+    if nearest_km > 3:
+        opportunities.append(
+            f"El club más cercano está a {nearest_km:.1f} km. El radio de captación no tiene "
+            f"competencia directa en el entorno inmediato."
+        )
+
+    # O4 — Mercado de gran volumen
+    if pop > 100000:
+        opportunities.append(
+            f"{pop:,} habitantes en el radio analizado. Masa crítica suficiente para sostener "
+            f"distintos formatos y segmentos de cliente."
+        )
+
+    # O5 — Escasez absoluta de pistas
+    if supply.total_courts < 10 and pop > 50000:
+        opportunities.append(
+            f"Solo {supply.total_courts} pistas detectadas para {pop:,} habitantes. "
+            f"La oferta es escasa en términos absolutos, no solo relativa a la media."
+        )
+
+    if not opportunities:
+        opportunities.append(
+            "No se identifican ventajas estructurales destacadas en esta ubicación con los datos disponibles."
+        )
+
+    # R1 — Zona saturada
+    if hab_per_court < bench.inhabitants_per_court * 0.8:
+        pct = round((1 - hab_per_court / bench.inhabitants_per_court) * 100)
+        risks.append(
+            f"La zona tiene {hab_per_court:,.0f} hab/pista, un {pct}% por debajo de la media nacional. "
+            f"Alta densidad de oferta respecto a la demanda potencial."
+        )
+
+    # R2 — Competidor muy cercano
+    if nearest_km < 3:
+        risks.append(
+            f"Hay un club a {nearest_km:.1f} km del punto analizado. La zona de captación "
+            f"se solapa directamente con oferta ya establecida."
+        )
+
+    # R3 — Indoor ya cubierto
+    if indoor_deficit_pp < -5:
+        risks.append(
+            f"El {local_indoor_pct}% de las pistas son indoor, {abs(indoor_deficit_pp):.0f}pp por encima "
+            f"de la media nacional. El formato cubierto no es un diferenciador en esta zona."
+        )
+
+    # R4 — Mercado pequeño
+    if pop < 50000:
+        risks.append(
+            f"El radio analizado concentra {pop:,} habitantes. Mercado potencial limitado "
+            f"para un club de tamaño estándar."
+        )
+
+    # R5 — Alta concentración de clubes
+    if supply.total_clubs > 8:
+        risks.append(
+            f"{supply.total_clubs} clubes activos en el radio. Entorno altamente competitivo "
+            f"con múltiples alternativas ya consolidadas."
+        )
+
+    if not risks:
+        risks.append("No se identifican factores de riesgo significativos en esta ubicación.")
 
     summary = (
         f"Zona con {ratios.saturation_level} saturación. "
