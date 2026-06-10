@@ -9,13 +9,17 @@ export const Route = createFileRoute("/admin/pricing")({
 
 const PRICES_PROXY = "/functions/v1/playtomic-prices";
 
-// Returns the date string (YYYY-MM-DD) of the next Tuesday
-function nextTuesday(): string {
+// Returns up to 4 consecutive Tuesday date strings starting from next Tuesday
+function nextTuesdays(count = 4): string[] {
+  const dates: string[] = [];
   const d = new Date();
-  const day = d.getDay(); // 0=Sun, 2=Tue
-  const daysUntilTuesday = (2 - day + 7) % 7 || 7;
+  const daysUntilTuesday = (2 - d.getDay() + 7) % 7 || 7;
   d.setDate(d.getDate() + daysUntilTuesday);
-  return d.toISOString().slice(0, 10);
+  for (let i = 0; i < count; i++) {
+    dates.push(new Date(d).toISOString().slice(0, 10));
+    d.setDate(d.getDate() + 7);
+  }
+  return dates;
 }
 
 function parsePrice(priceStr: string): number | null {
@@ -32,11 +36,13 @@ function extractTenantId(playtomicId: string): string {
 
 const getUniqueTenants = createServerFn({ method: "POST" }).handler(async () => {
   const supabase = getSupabaseClient();
+  // Only return clubs missing at least one price to avoid reprocessing
   const { data, error } = await supabase
     .from("courts")
     .select("playtomic_id")
     .eq("source", "playtomic")
-    .not("playtomic_id", "is", null);
+    .not("playtomic_id", "is", null)
+    .or("price_valley.is.null,price_peak.is.null");
 
   if (error) throw new Error(error.message);
 
@@ -109,8 +115,8 @@ function AdminPricing() {
     setLogs([]);
     setProgress(0);
 
-    const date = nextTuesday();
-    addLog(`Fecha objetivo: ${date} (martes próximo)`, "info");
+    const tuesdays = nextTuesdays(4);
+    addLog(`Fechas a probar: ${tuesdays.join(", ")}`, "info");
 
     let tenantIds: string[] = [];
     try {
@@ -140,9 +146,17 @@ function AdminPricing() {
       setProgress(Math.round((i / tenantIds.length) * 100));
 
       try {
-        const resources = await fetchAvailability(proxyBase, supabaseKey, tenantId, date);
-        const priceValley = extractPriceAt(resources, "11:00:00");
-        const pricePeak = extractPriceAt(resources, "20:00:00");
+        let priceValley: number | null = null;
+        let pricePeak: number | null = null;
+
+        for (const tuesday of tuesdays) {
+          if (priceValley !== null && pricePeak !== null) break;
+          const resources = await fetchAvailability(proxyBase, supabaseKey, tenantId, tuesday);
+          if (priceValley === null) priceValley = extractPriceAt(resources, "11:00:00");
+          if (pricePeak === null) pricePeak = extractPriceAt(resources, "20:00:00");
+          if (priceValley === null && pricePeak === null) continue;
+          await new Promise((r) => setTimeout(r, 100));
+        }
 
         await savePrices({ data: { tenantId, priceValley, pricePeak } });
 
