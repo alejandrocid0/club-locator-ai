@@ -9,7 +9,7 @@ export const Route = createFileRoute("/admin/pricing")({
 
 const PRICES_PROXY = "/functions/v1/playtomic-prices";
 
-const TARGET_DATES = ["2026-09-17", "2026-09-18"];
+const TARGET_DATES = ["2026-07-08", "2026-07-09"];
 
 function parsePrice(priceStr: string): number | null {
   const match = priceStr.match(/[\d.]+/);
