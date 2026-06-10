@@ -9,13 +9,19 @@ export const Route = createFileRoute("/admin/pricing")({
 
 const PRICES_PROXY = "/functions/v1/playtomic-prices";
 
-function nextTuesdays(count = 8): string[] {
+// Returns Mon/Tue/Wed/Thu for the next `weeks` weeks
+function nextWeekdays(weeks = 8): string[] {
   const dates: string[] = [];
   const d = new Date();
-  const daysUntilTuesday = (2 - d.getDay() + 7) % 7 || 7;
-  d.setDate(d.getDate() + daysUntilTuesday);
-  for (let i = 0; i < count; i++) {
-    dates.push(new Date(d).toISOString().slice(0, 10));
+  // Find next Monday
+  const daysUntilMonday = (1 - d.getDay() + 7) % 7 || 7;
+  d.setDate(d.getDate() + daysUntilMonday);
+  for (let w = 0; w < weeks; w++) {
+    for (let offset = 0; offset < 4; offset++) { // Mon=0, Tue=1, Wed=2, Thu=3
+      const day = new Date(d);
+      day.setDate(d.getDate() + offset);
+      dates.push(day.toISOString().slice(0, 10));
+    }
     d.setDate(d.getDate() + 7);
   }
   return dates;
@@ -119,8 +125,8 @@ function AdminPricing() {
     setLogs([]);
     setProgress(0);
 
-    const tuesdays = nextTuesdays(8);
-    addLog(`Fechas a probar: ${tuesdays.join(", ")}`, "info");
+    const dates = nextWeekdays(8);
+    addLog(`Fechas a probar: ${dates.length} días (L-J × 8 semanas)`, "info");
 
     let tenantIds: string[] = [];
     try {
@@ -153,10 +159,10 @@ function AdminPricing() {
         let priceValley: number | null = null;
         let pricePeak: number | null = null;
 
-        for (const tuesday of tuesdays) {
+        for (const date of dates) {
           if (priceValley !== null && pricePeak !== null) break;
-          const resources = await fetchAvailability(proxyBase, supabaseKey, tenantId, tuesday);
-          if (priceValley === null) priceValley = extractPriceInRange(resources, "08:00:00", "14:00:00");
+          const resources = await fetchAvailability(proxyBase, supabaseKey, tenantId, date);
+          if (priceValley === null) priceValley = extractPriceInRange(resources, "09:00:00", "12:00:00");
           if (pricePeak === null) pricePeak = extractPriceInRange(resources, "18:00:00", "22:00:00");
           if (priceValley === null && pricePeak === null) continue;
           await new Promise((r) => setTimeout(r, 100));
