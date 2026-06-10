@@ -51,7 +51,6 @@ const getUniqueTenants = createServerFn({ method: "POST" }).handler(async () => 
       .select("playtomic_id")
       .eq("source", "playtomic")
       .not("playtomic_id", "is", null)
-      .or("price_valley.is.null,price_peak.is.null")
       .range(from, from + PAGE - 1);
 
     if (error) throw new Error(error.message);
@@ -70,14 +69,9 @@ const savePrices = createServerFn({ method: "POST" })
   .inputValidator((d: { tenantId: string; priceValley: number | null; pricePeak: number | null }) => d)
   .handler(async ({ data }) => {
     const supabase = getSupabaseClient();
-    const update: Record<string, number> = {};
-    if (data.priceValley !== null) update.price_valley = data.priceValley;
-    if (data.pricePeak !== null) update.price_peak = data.pricePeak;
-    if (Object.keys(update).length === 0) return { ok: true };
-
     const { error } = await supabase
       .from("courts")
-      .update(update)
+      .update({ price_valley: data.priceValley, price_peak: data.pricePeak })
       .like("playtomic_id", `${data.tenantId}_%`);
 
     if (error) throw new Error(error.message);
