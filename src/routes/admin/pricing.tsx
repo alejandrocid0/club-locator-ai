@@ -9,23 +9,7 @@ export const Route = createFileRoute("/admin/pricing")({
 
 const PRICES_PROXY = "/functions/v1/playtomic-prices";
 
-// Returns Mon/Tue/Wed/Thu for the next `weeks` weeks
-function nextWeekdays(weeks = 8): string[] {
-  const dates: string[] = [];
-  const d = new Date();
-  // Find next Monday
-  const daysUntilMonday = (1 - d.getDay() + 7) % 7 || 7;
-  d.setDate(d.getDate() + daysUntilMonday);
-  for (let w = 0; w < weeks; w++) {
-    for (let offset = 0; offset < 4; offset++) { // Mon=0, Tue=1, Wed=2, Thu=3
-      const day = new Date(d);
-      day.setDate(d.getDate() + offset);
-      dates.push(day.toISOString().slice(0, 10));
-    }
-    d.setDate(d.getDate() + 7);
-  }
-  return dates;
-}
+const TARGET_DATES = ["2026-09-17", "2026-09-18"];
 
 function parsePrice(priceStr: string): number | null {
   const match = priceStr.match(/[\d.]+/);
@@ -127,8 +111,8 @@ function AdminPricing() {
     setLogs([]);
     setProgress(0);
 
-    const dates = nextWeekdays(12);
-    addLog(`Fechas a probar: ${dates.length} días (L-J × 8 semanas)`, "info");
+    const dates = TARGET_DATES;
+    addLog(`Fechas a probar: ${dates.join(", ")}`, "info");
 
     let tenantIds: string[] = [];
     try {
