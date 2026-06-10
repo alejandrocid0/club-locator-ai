@@ -30,7 +30,7 @@ function extractTenantId(playtomicId: string): string {
   return parts.join("_");
 }
 
-const getUniqueTenants = createServerFn({ method: "GET" }).handler(async () => {
+const getUniqueTenants = createServerFn({ method: "POST" }).handler(async () => {
   const supabase = getSupabaseClient();
   const { data, error } = await supabase
     .from("courts")
