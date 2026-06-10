@@ -104,10 +104,7 @@ function extractPriceInRange(
   toTime: string,
 ): number | null {
   for (const resource of resources) {
-    // Prefer 90min slot in range, fall back to any duration
-    const slot90 = resource.slots.find((s) => s.duration === 90 && timeInRange(s.start_time, fromTime, toTime));
-    const slotAny = resource.slots.find((s) => timeInRange(s.start_time, fromTime, toTime));
-    const slot = slot90 ?? slotAny;
+    const slot = resource.slots.find((s) => s.duration === 90 && timeInRange(s.start_time, fromTime, toTime));
     if (slot) return parsePrice(slot.price);
   }
   return null;
@@ -136,7 +133,7 @@ function AdminPricing() {
     setLogs([]);
     setProgress(0);
 
-    const dates = nextWeekdays(8);
+    const dates = nextWeekdays(12);
     addLog(`Fechas a probar: ${dates.length} días (L-J × 8 semanas)`, "info");
 
     let tenantIds: string[] = [];
