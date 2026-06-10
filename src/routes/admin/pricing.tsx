@@ -28,10 +28,10 @@ function parsePrice(priceStr: string): number | null {
 }
 
 function extractTenantId(playtomicId: string): string {
-  // playtomic_id format: "{tenant_id}_{index}" → extract tenant_id
-  const parts = playtomicId.split("_");
-  parts.pop();
-  return parts.join("_");
+  // Multi-court: "uuid_0", "uuid_1" → extract uuid
+  // Single-court: "uuid" (no suffix) → return as-is
+  const match = playtomicId.match(/^(.+)_\d+$/);
+  return match ? match[1] : playtomicId;
 }
 
 const getUniqueTenants = createServerFn({ method: "POST" }).handler(async () => {
