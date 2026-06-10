@@ -9,6 +9,8 @@ export type CourtResult = {
   court_count: number;
   lat: number;
   lng: number;
+  price_valley: number | null;
+  price_peak: number | null;
 };
 
 export async function getCourtsInRadius(
@@ -36,5 +38,7 @@ export async function getCourtsInRadius(
     court_count: Number(r.court_count ?? 1),
     lat: r.lat ?? 0,
     lng: r.lng ?? 0,
+    price_valley: r.price_valley ?? null,
+    price_peak: r.price_peak ?? null,
   }));
 }

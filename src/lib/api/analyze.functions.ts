@@ -218,10 +218,7 @@ export const analyzeLocation = createServerFn({ method: "POST" })
           outdoorRatio: Math.round((1 - bench.indoorRatio) * 100),
         },
       },
-      pricing: {
-        valle: bench.avgPriceValley,
-        punta: bench.avgPricePeak,
-      },
+      pricing: localPricing(courts, bench),
       clubsNearby: courts.map((c, i) => ({
         id: i,
         name: c.club_name ?? c.name ?? `Club ${i + 1}`,
@@ -253,6 +250,21 @@ async function getPopulation(lat: number, lng: number, radiusKm: number): Promis
   if (!data?.[0]?.population) throw new Error("No se encontraron datos de población del INE para esta ubicación.");
 
   return data[0].population;
+}
+
+function localPricing(
+  courts: Awaited<ReturnType<typeof getCourtsInRadius>>,
+  bench: Awaited<ReturnType<typeof getNationalBenchmarks>>,
+): { valle: number; punta: number; isLocal: boolean } {
+  const valleys = courts.map((c) => c.price_valley).filter((p): p is number => p !== null);
+  const peaks = courts.map((c) => c.price_peak).filter((p): p is number => p !== null);
+
+  if (valleys.length > 0 && peaks.length > 0) {
+    const avg = (arr: number[]) => Math.round((arr.reduce((a, b) => a + b, 0) / arr.length) * 100) / 100;
+    return { valle: avg(valleys), punta: avg(peaks), isLocal: true };
+  }
+
+  return { valle: bench.avgPriceValley, punta: bench.avgPricePeak, isLocal: false };
 }
 
 async function saveAnalysis(

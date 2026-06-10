@@ -292,11 +292,19 @@ export function Report({ data }: { data: AnalysisResult }) {
 
       {/* 5. Pricing */}
       <section>
-        <SectionTitle kicker="05 · Pricing" title="Pricing de referencia nacional" />
+        <SectionTitle
+          kicker="05 · Pricing"
+          title={data.pricing.isLocal ? "Pricing competencia local" : "Pricing de referencia nacional"}
+        />
+        <p className="text-sm text-muted-foreground -mt-4 mb-4">
+          {data.pricing.isLocal
+            ? `Promedio de ${data.supply.clubs} club${data.supply.clubs !== 1 ? "es" : ""} con precios disponibles en el radio analizado.`
+            : "No hay precios locales disponibles aún. Mostrando media nacional de referencia."}
+        </p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-lg">
           {[
-            { label: "Hora valle", value: data.pricing.valle, hint: "L-V mañanas" },
-            { label: "Hora punta", value: data.pricing.punta, hint: "L-V 18-22h" },
+            { label: "Hora valle", value: data.pricing.valle, hint: "Martes 11:00" },
+            { label: "Hora punta", value: data.pricing.punta, hint: "Martes 20:00" },
           ].map((p) => (
             <Card key={p.label} className="p-6">
               <div className="text-xs uppercase tracking-wider text-muted-foreground">
