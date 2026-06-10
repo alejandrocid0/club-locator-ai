@@ -9,8 +9,7 @@ export const Route = createFileRoute("/admin/pricing")({
 
 const PRICES_PROXY = "/functions/v1/playtomic-prices";
 
-// Returns up to 4 consecutive Tuesday date strings starting from next Tuesday
-function nextTuesdays(count = 4): string[] {
+function nextTuesdays(count = 8): string[] {
   const dates: string[] = [];
   const d = new Date();
   const daysUntilTuesday = (2 - d.getDay() + 7) % 7 || 7;
@@ -78,14 +77,19 @@ async function fetchAvailability(proxyBase: string, key: string, tenantId: strin
   return r.json() as Promise<{ resource_id: string; slots: { start_time: string; duration: number; price: string }[] }[]>;
 }
 
-function extractPriceAt(
+function timeInRange(time: string, from: string, to: string): boolean {
+  return time >= from && time < to;
+}
+
+function extractPriceInRange(
   resources: { slots: { start_time: string; duration: number; price: string }[] }[],
-  targetTime: string,
+  fromTime: string,
+  toTime: string,
 ): number | null {
   for (const resource of resources) {
-    // Prefer 90min slot, fall back to any duration at that time
-    const slot90 = resource.slots.find((s) => s.start_time === targetTime && s.duration === 90);
-    const slotAny = resource.slots.find((s) => s.start_time === targetTime);
+    // Prefer 90min slot in range, fall back to any duration
+    const slot90 = resource.slots.find((s) => s.duration === 90 && timeInRange(s.start_time, fromTime, toTime));
+    const slotAny = resource.slots.find((s) => timeInRange(s.start_time, fromTime, toTime));
     const slot = slot90 ?? slotAny;
     if (slot) return parsePrice(slot.price);
   }
@@ -115,7 +119,7 @@ function AdminPricing() {
     setLogs([]);
     setProgress(0);
 
-    const tuesdays = nextTuesdays(4);
+    const tuesdays = nextTuesdays(8);
     addLog(`Fechas a probar: ${tuesdays.join(", ")}`, "info");
 
     let tenantIds: string[] = [];
@@ -152,8 +156,8 @@ function AdminPricing() {
         for (const tuesday of tuesdays) {
           if (priceValley !== null && pricePeak !== null) break;
           const resources = await fetchAvailability(proxyBase, supabaseKey, tenantId, tuesday);
-          if (priceValley === null) priceValley = extractPriceAt(resources, "11:00:00");
-          if (pricePeak === null) pricePeak = extractPriceAt(resources, "20:00:00");
+          if (priceValley === null) priceValley = extractPriceInRange(resources, "08:00:00", "14:00:00");
+          if (pricePeak === null) pricePeak = extractPriceInRange(resources, "18:00:00", "22:00:00");
           if (priceValley === null && pricePeak === null) continue;
           await new Promise((r) => setTimeout(r, 100));
         }
