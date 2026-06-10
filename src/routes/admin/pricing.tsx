@@ -112,11 +112,26 @@ function AdminPricing() {
     const date = nextTuesday();
     addLog(`Fecha objetivo: ${date} (martes próximo)`, "info");
 
-    const tenantIds = await getUniqueTenants();
+    let tenantIds: string[] = [];
+    try {
+      tenantIds = await getUniqueTenants();
+    } catch (e: any) {
+      addLog(`Error leyendo clubes de BD: ${e.message}`, "err");
+      setRunning(false);
+      return;
+    }
+
+    if (tenantIds.length === 0) {
+      addLog("No se encontraron clubes de Playtomic en la BD. Ejecuta primero el seed de /admin/playtomic.", "err");
+      setRunning(false);
+      return;
+    }
+
     addLog(`${tenantIds.length} clubes únicos encontrados en BD`, "info");
     setStats({ total: tenantIds.length, done: 0, withValley: 0, withPeak: 0 });
 
-    const proxyBase = `${window.location.origin.replace("8080", "54321")}${PRICES_PROXY}`;
+    const supabaseUrl = "https://xoaljtqznzvlhwwnxnjv.supabase.co";
+    const proxyBase = `${supabaseUrl}${PRICES_PROXY}`;
     let done = 0, withValley = 0, withPeak = 0;
 
     for (let i = 0; i < tenantIds.length; i++) {
