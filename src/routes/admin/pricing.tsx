@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { useState, useRef } from "react";
-import { getSupabaseClient } from "~/lib/supabase.server";
+import { getSupabaseClient } from "@/lib/supabase.server";
 
 export const Route = createFileRoute("/admin/pricing")({
   component: AdminPricing,
