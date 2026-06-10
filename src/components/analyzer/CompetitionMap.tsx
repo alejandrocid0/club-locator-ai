@@ -18,6 +18,8 @@ type Club = {
   distance_km: number;
   lat: number;
   lng: number;
+  price_valley: number | null;
+  price_peak: number | null;
 };
 
 interface Props {
@@ -88,11 +90,21 @@ export default function CompetitionMap({ coords, radius, clubs }: Props) {
             }}
           >
             <Popup>
-              <div style={{ minWidth: 160 }}>
+              <div style={{ minWidth: 170 }}>
                 <strong>{c.name}</strong>
                 <br />
                 {c.courts} pista{c.courts !== 1 ? "s" : ""} · {c.type}
                 <br />
+                {(c.price_valley !== null || c.price_peak !== null) && (
+                  <>
+                    {c.price_valley !== null && (
+                      <>Valle: <strong>€{c.price_valley}</strong><br /></>
+                    )}
+                    {c.price_peak !== null && (
+                      <>Punta: <strong>€{c.price_peak}</strong><br /></>
+                    )}
+                  </>
+                )}
                 <span style={{ color: "#888", fontSize: 12 }}>{c.distance_km} km del punto</span>
               </div>
             </Popup>

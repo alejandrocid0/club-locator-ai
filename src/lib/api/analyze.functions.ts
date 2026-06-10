@@ -227,6 +227,8 @@ export const analyzeLocation = createServerFn({ method: "POST" })
         distance_km: Math.round(c.distance_m / 100) / 10,
         lat: c.lat,
         lng: c.lng,
+        price_valley: c.price_valley ?? null,
+        price_peak: c.price_peak ?? null,
       })),
       recommendation: {
         summary: `${totalCourts} pistas detectadas para ${population.toLocaleString("es-ES")} habitantes en radio de ${radius} km (${habPerCourt.toLocaleString("es-ES")} hab/pista). ${indoorDeficitPp > 5 ? `Déficit indoor de ${indoorDeficitPp}pp vs media nacional.` : "Cobertura indoor adecuada."} Competidor más cercano a ${nearestKm.toFixed(1)} km.`,
