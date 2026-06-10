@@ -9,7 +9,22 @@ export const Route = createFileRoute("/admin/pricing")({
 
 const PRICES_PROXY = "/functions/v1/playtomic-prices";
 
-const TARGET_DATES = ["2026-07-08", "2026-07-09"];
+// Returns Mon/Tue/Wed/Thu for the next `weeks` weeks
+function nextWeekdays(weeks = 2): string[] {
+  const dates: string[] = [];
+  const d = new Date();
+  const daysUntilMonday = (1 - d.getDay() + 7) % 7 || 7;
+  d.setDate(d.getDate() + daysUntilMonday);
+  for (let w = 0; w < weeks; w++) {
+    for (let offset = 0; offset < 4; offset++) {
+      const day = new Date(d);
+      day.setDate(d.getDate() + offset);
+      dates.push(day.toISOString().slice(0, 10));
+    }
+    d.setDate(d.getDate() + 7);
+  }
+  return dates;
+}
 
 function parsePrice(priceStr: string): number | null {
   const match = priceStr.match(/[\d.]+/);
@@ -53,9 +68,14 @@ const savePrices = createServerFn({ method: "POST" })
   .inputValidator((d: { tenantId: string; priceValley: number | null; pricePeak: number | null }) => d)
   .handler(async ({ data }) => {
     const supabase = getSupabaseClient();
+    const update: Record<string, number> = {};
+    if (data.priceValley !== null) update.price_valley = data.priceValley;
+    if (data.pricePeak !== null) update.price_peak = data.pricePeak;
+    if (Object.keys(update).length === 0) return { ok: true };
+
     const { error } = await supabase
       .from("courts")
-      .update({ price_valley: data.priceValley, price_peak: data.pricePeak })
+      .update(update)
       .like("playtomic_id", `${data.tenantId}_%`);
 
     if (error) throw new Error(error.message);
@@ -111,7 +131,7 @@ function AdminPricing() {
     setLogs([]);
     setProgress(0);
 
-    const dates = TARGET_DATES;
+    const dates = nextWeekdays(2);
     addLog(`Fechas a probar: ${dates.join(", ")}`, "info");
 
     let tenantIds: string[] = [];
