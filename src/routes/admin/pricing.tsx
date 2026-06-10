@@ -41,17 +41,28 @@ function extractTenantId(playtomicId: string): string {
 
 const getUniqueTenants = createServerFn({ method: "POST" }).handler(async () => {
   const supabase = getSupabaseClient();
-  // Only return clubs missing at least one price to avoid reprocessing
-  const { data, error } = await supabase
-    .from("courts")
-    .select("playtomic_id")
-    .eq("source", "playtomic")
-    .not("playtomic_id", "is", null)
-    .or("price_valley.is.null,price_peak.is.null");
+  const PAGE = 1000;
+  let from = 0;
+  const all: string[] = [];
 
-  if (error) throw new Error(error.message);
+  while (true) {
+    const { data, error } = await supabase
+      .from("courts")
+      .select("playtomic_id")
+      .eq("source", "playtomic")
+      .not("playtomic_id", "is", null)
+      .or("price_valley.is.null,price_peak.is.null")
+      .range(from, from + PAGE - 1);
 
-  const tenantIds = [...new Set((data ?? []).map((r) => extractTenantId(r.playtomic_id)))];
+    if (error) throw new Error(error.message);
+    if (!data || data.length === 0) break;
+
+    all.push(...data.map((r) => r.playtomic_id));
+    if (data.length < PAGE) break;
+    from += PAGE;
+  }
+
+  const tenantIds = [...new Set(all.map(extractTenantId))];
   return tenantIds;
 });
 
