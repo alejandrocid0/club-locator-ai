@@ -5,10 +5,6 @@ import { getCourtsInRadius } from "./courts.server";
 import { getNationalBenchmarks } from "./benchmarks.server";
 import { getSupabaseClient } from "@/lib/supabase.server";
 
-// Population density fallback (hab/km²) used only when INE census data is not
-// available for the queried area. Not a national benchmark, kept local.
-const SPAIN_AVG_DENSITY = 93;
-
 // Score weights
 const SCORE_W_HAB_PER_COURT = 0.50;
 const SCORE_W_INDOOR_DEFICIT = 0.35;
@@ -110,15 +106,6 @@ export const analyzeLocation = createServerFn({ method: "POST" })
     ) / 10;
 
     const risk = nearestKm < 3 ? "alto" : nearestKm <= 5 ? "medio" : "bajo";
-
-    const model =
-      score >= 7 && indoorDeficitPp > 5
-        ? "Club indoor (6-8 pistas cubiertas)"
-        : score >= 7
-          ? "Club mixto (4 indoor + 4 outdoor)"
-          : score >= 5
-            ? "Club outdoor con opción de expansión indoor"
-            : "Análisis ampliado recomendado antes de invertir";
 
     const opportunities: string[] = [];
     const risks: string[] = [];
@@ -231,10 +218,7 @@ export const analyzeLocation = createServerFn({ method: "POST" })
           outdoorRatio: Math.round((1 - bench.indoorRatio) * 100),
         },
       },
-      pricing: {
-        valle: bench.avgPriceValley,
-        punta: bench.avgPricePeak,
-      },
+      pricing: localPricing(courts),
       clubsNearby: courts.map((c, i) => ({
         id: i,
         name: c.club_name ?? c.name ?? `Club ${i + 1}`,
@@ -243,10 +227,11 @@ export const analyzeLocation = createServerFn({ method: "POST" })
         distance_km: Math.round(c.distance_m / 100) / 10,
         lat: c.lat,
         lng: c.lng,
+        price_valley: c.price_valley ?? null,
+        price_peak: c.price_peak ?? null,
       })),
       recommendation: {
         summary: `${totalCourts} pistas detectadas para ${population.toLocaleString("es-ES")} habitantes en radio de ${radius} km (${habPerCourt.toLocaleString("es-ES")} hab/pista). ${indoorDeficitPp > 5 ? `Déficit indoor de ${indoorDeficitPp}pp vs media nacional.` : "Cobertura indoor adecuada."} Competidor más cercano a ${nearestKm.toFixed(1)} km.`,
-        model,
         opportunities,
         risks,
       },
@@ -256,26 +241,36 @@ export const analyzeLocation = createServerFn({ method: "POST" })
 export type AnalysisResult = Awaited<ReturnType<typeof analyzeLocation>>;
 
 async function getPopulation(lat: number, lng: number, radiusKm: number): Promise<number> {
-  try {
-    const supabase = getSupabaseClient();
-    const radiusM = radiusKm * 1000;
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase.rpc("demographics_in_radius", {
+    center_lat: lat,
+    center_lng: lng,
+    radius_meters: radiusKm * 1000,
+  });
 
-    const { data } = await supabase.rpc("demographics_in_radius", {
-      center_lat: lat,
-      center_lng: lng,
-      radius_meters: radiusM,
-    });
+  if (error) throw new Error(`Error consultando datos del INE: ${error.message}`);
+  if (!data?.[0]?.population) throw new Error("No se encontraron datos de población del INE para esta ubicación.");
 
-    if (data && data[0]?.population) {
-      return data[0].population;
-    }
-  } catch {
-    // Fall through to estimate
-  }
+  return data[0].population;
+}
 
-  // Fallback estimate until INE data is loaded
-  const area = Math.round(Math.PI * radiusKm ** 2);
-  return Math.round(area * SPAIN_AVG_DENSITY);
+function localPricing(
+  courts: Awaited<ReturnType<typeof getCourtsInRadius>>,
+): { valle: number | null; punta: number | null; clubCount: number } {
+  const valid = courts.filter(
+    (c) => c.price_valley !== null && c.price_peak !== null && c.price_peak >= c.price_valley,
+  );
+
+  if (valid.length === 0) return { valle: null, punta: null, clubCount: 0 };
+
+  const avg = (arr: number[]) =>
+    Math.round((arr.reduce((a, b) => a + b, 0) / arr.length) * 100) / 100;
+
+  return {
+    valle: avg(valid.map((c) => c.price_valley as number)),
+    punta: avg(valid.map((c) => c.price_peak as number)),
+    clubCount: valid.length,
+  };
 }
 
 async function saveAnalysis(

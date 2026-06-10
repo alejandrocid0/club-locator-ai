@@ -6,7 +6,6 @@ import {
   TrendingUp,
   Users,
   ShieldAlert,
-  Sparkles,
   Layers,
   Gauge,
   CheckCircle2,
@@ -293,26 +292,36 @@ export function Report({ data }: { data: AnalysisResult }) {
 
       {/* 5. Pricing */}
       <section>
-        <SectionTitle kicker="05 · Pricing" title="Pricing de referencia nacional" />
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-lg">
-          {[
-            { label: "Hora valle", value: data.pricing.valle, hint: "L-V mañanas" },
-            { label: "Hora punta", value: data.pricing.punta, hint: "L-V 18-22h" },
-          ].map((p) => (
-            <Card key={p.label} className="p-6">
-              <div className="text-xs uppercase tracking-wider text-muted-foreground">
-                {p.label}
-              </div>
-              <div className="mt-3 flex items-baseline gap-1">
-                <span className="text-4xl font-semibold tabular-nums text-foreground">
-                  €{p.value}
-                </span>
-                <span className="text-muted-foreground">/ 90 min</span>
-              </div>
-              <div className="mt-2 text-sm text-muted-foreground">{p.hint}</div>
-            </Card>
-          ))}
-        </div>
+        <SectionTitle kicker="05 · Pricing" title="Pricing competencia local" />
+        {data.pricing.valle === null ? (
+          <p className="text-sm text-muted-foreground -mt-4">
+            Precio no disponible — ningún club del radio tiene datos de precio en este momento.
+          </p>
+        ) : (
+          <>
+            <p className="text-sm text-muted-foreground -mt-4 mb-4">
+              Promedio de {data.pricing.clubCount} club{data.pricing.clubCount !== 1 ? "es" : ""} con precios disponibles en el radio analizado.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-lg">
+              {[
+                { label: "Hora valle", value: data.pricing.valle },
+                { label: "Hora punta", value: data.pricing.punta },
+              ].map((p) => (
+                <Card key={p.label} className="p-6">
+                  <div className="text-xs uppercase tracking-wider text-muted-foreground">
+                    {p.label}
+                  </div>
+                  <div className="mt-3 flex items-baseline gap-1">
+                    <span className="text-4xl font-semibold tabular-nums text-foreground">
+                      €{p.value}
+                    </span>
+                    <span className="text-muted-foreground">/ 90 min</span>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </>
+        )}
       </section>
 
       {/* 6. Mapa */}
@@ -348,10 +357,6 @@ export function Report({ data }: { data: AnalysisResult }) {
                 <p className="text-lg leading-relaxed text-foreground">
                   {data.recommendation.summary}
                 </p>
-                <div className="mt-4 inline-flex items-center gap-2 rounded-md bg-primary px-4 py-1.5 text-sm font-bold text-primary-foreground">
-                  <Sparkles className="size-3.5" />
-                  Modelo recomendado: {data.recommendation.model}
-                </div>
               </div>
             </div>
 
