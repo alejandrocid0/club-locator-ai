@@ -29,7 +29,7 @@ AS $$
         c.club_name,
         bool_or(c.is_indoor)                        AS is_indoor,
         ST_Distance(
-            c.location::geography,
+            MIN(c.location)::geography,
             ST_SetSRID(ST_MakePoint(center_lng, center_lat), 4326)::geography
         )                                            AS distance_m,
         COUNT(*)                                     AS court_count,
